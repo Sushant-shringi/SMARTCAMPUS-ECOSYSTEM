@@ -1,22 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import {
-  Briefcase,
-  ShieldCheck,
-  ShieldAlert,
-  Sparkles,
   FileText,
   Target,
   Bot,
   HelpCircle,
-  TrendingUp,
+  Sparkles,
   Building,
-  Calendar,
+  ShieldCheck,
+  ShieldAlert,
+  UploadCloud,
   CheckCircle2,
+  Calendar,
   Lock,
   ArrowRight,
-  Upload,
-  AlertTriangle
+  RefreshCw,
+  Layers,
+  ChevronDown
 } from 'lucide-react';
 
 // Import career module components (default exports)
@@ -26,14 +26,25 @@ import RagChat from '../../career-modules/components/RagChat';
 import InterviewPrep from '../../career-modules/components/InterviewPrep';
 import ResumeSuggestions from '../../career-modules/components/ResumeSuggestions';
 
+// API Client for Career AI Service
+import {
+  fetchHealth,
+  fetchResumes,
+  fetchResumeDetail
+} from '../../career-modules/api/client';
+
 export const PlacementHub = () => {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState('drives');
+  const [activeTab, setActiveTab] = useState('upload'); // Default to Upload Resume
   const [eligibility, setEligibility] = useState(null);
+  const [health, setHealth] = useState(null);
+  const [resumes, setResumes] = useState([]);
+  const [selectedResumeId, setSelectedResumeId] = useState(null);
+  const [activeResume, setActiveResume] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Fallback demo state
-  const [drives, setDrives] = useState([
+  // Campus Placement Drives
+  const drives = [
     {
       id: "drv_001",
       company_name: "Google Cloud Technologies",
@@ -74,20 +85,48 @@ export const PlacementHub = () => {
       deadline: "2026-11-30",
       tags: ["Node.js", "Redis", "Kafka"]
     }
-  ]);
+  ];
+
+  const loadResumes = async (selectId = null) => {
+    try {
+      const list = await fetchResumes();
+      setResumes(list);
+      if (list.length > 0) {
+        const idToSelect = selectId || selectedResumeId || list[0].id;
+        setSelectedResumeId(idToSelect);
+        const detail = await fetchResumeDetail(idToSelect);
+        setActiveResume(detail);
+      } else {
+        setSelectedResumeId(null);
+        setActiveResume(null);
+      }
+    } catch (err) {
+      console.error('Failed to load resumes:', err);
+    }
+  };
+
+  const loadHealth = async () => {
+    try {
+      const data = await fetchHealth();
+      setHealth(data);
+    } catch (err) {
+      setHealth({ llm_status: 'disconnected', llm_message: 'Career AI Service starting...' });
+    }
+  };
 
   useEffect(() => {
-    // Check eligibility
-    const fetchEligibility = async () => {
+    const initData = async () => {
+      setLoading(true);
+      await Promise.all([loadHealth(), loadResumes()]);
+
+      // Check attendance eligibility
       try {
         const studentId = user?.id || "student_default";
-        // Connect to career eligibility bridge
         const res = await fetch(`http://127.0.0.1:8001/api/placement/eligibility/${studentId}`);
         if (res.ok) {
           const data = await res.json();
           setEligibility(data);
         } else {
-          // Default mock representation
           setEligibility({
             attendance_percentage: 84.5,
             minimum_required: 75.0,
@@ -99,7 +138,6 @@ export const PlacementHub = () => {
           });
         }
       } catch (e) {
-        // Fallback
         setEligibility({
           attendance_percentage: 84.5,
           minimum_required: 75.0,
@@ -114,49 +152,89 @@ export const PlacementHub = () => {
       }
     };
 
-    fetchEligibility();
+    initData();
   }, [user]);
+
+  const handleSelectResume = async (id) => {
+    setSelectedResumeId(id);
+    try {
+      const detail = await fetchResumeDetail(id);
+      setActiveResume(detail);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleUploadSuccess = async (newId) => {
+    await loadResumes(newId);
+    setActiveTab('upload');
+  };
+
+  const handleDeleteSuccess = async () => {
+    await loadResumes();
+  };
 
   const pct = eligibility?.attendance_percentage || 84.5;
   const isEligible = pct >= 75.0;
 
   return (
     <div className="space-y-6">
-      {/* Page Title & Breadcrumb */}
-      <div>
-        <h1 className="text-2xl font-black text-slate-900 dark:text-slate-100 flex items-center gap-3">
-          <Briefcase className="w-7 h-7 text-indigo-600 dark:text-indigo-400" />
-          Campus Career & Placement Studio
-          <span className="text-xs px-2.5 py-1 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 font-bold uppercase tracking-wider">
-            AI Powered
-          </span>
-        </h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-          University Placement Hub uniting real-time academic attendance credentials with generative AI resume tailoring and interview prep.
-        </p>
+      {/* Header Banner */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-black text-slate-900 dark:text-slate-100 flex items-center gap-3">
+            <FileText className="w-7 h-7 text-indigo-600 dark:text-indigo-400" />
+            AI-Career-Resume Studio
+            <span className="text-xs px-2.5 py-1 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 font-bold uppercase tracking-wider">
+              Generative AI & RAG
+            </span>
+          </h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            Upload and parse your PDF resume, match against job descriptions, practice with STAR mock interviews, and apply for campus drives.
+          </p>
+        </div>
+
+        {/* Resume Selector Dropdown if multiple resumes exist */}
+        {resumes.length > 0 && (
+          <div className="flex items-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-1.5 rounded-xl shadow-xs">
+            <Layers className="w-4 h-4 text-indigo-500" />
+            <span className="text-xs text-slate-500 font-medium">Active:</span>
+            <select
+              value={selectedResumeId || ''}
+              onChange={(e) => handleSelectResume(e.target.value)}
+              className="bg-transparent text-xs font-bold text-slate-900 dark:text-slate-100 outline-none cursor-pointer"
+            >
+              {resumes.map((r) => (
+                <option key={r.id} value={r.id} className="dark:bg-slate-900">
+                  {r.filename} ({r.skills_count} skills)
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       {/* University Attendance-Eligibility Gate Banner */}
-      <div className={`p-6 rounded-2xl border shadow-sm transition-all ${
+      <div className={`p-5 rounded-2xl border shadow-xs transition-all ${
         isEligible
           ? 'bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border-emerald-500/30'
           : 'bg-gradient-to-r from-amber-500/10 via-rose-500/5 to-transparent border-amber-500/30'
       }`}>
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <div className="flex items-start gap-4">
-            <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${
+          <div className="flex items-start gap-3.5">
+            <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${
               isEligible
                 ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
                 : 'bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30'
             }`}>
-              {isEligible ? <ShieldCheck className="w-7 h-7" /> : <ShieldAlert className="w-7 h-7" />}
+              {isEligible ? <ShieldCheck className="w-6 h-6" /> : <ShieldAlert className="w-6 h-6" />}
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-bold text-base text-slate-900 dark:text-slate-100">
-                  {isEligible ? 'Placement Drive Eligibility: APPROVED' : 'Placement Privilege Hold: DEFICIT WARNING'}
+                <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100">
+                  {isEligible ? 'Placement Eligibility: VERIFIED & ACTIVE' : 'Placement Privilege Hold: ATTENDANCE DEFICIT'}
                 </h3>
-                <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
+                <span className={`text-[11px] px-2 py-0.5 rounded-full font-extrabold ${
                   isEligible
                     ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400'
                     : 'bg-amber-500/20 text-amber-600 dark:text-amber-400'
@@ -164,54 +242,42 @@ export const PlacementHub = () => {
                   {pct}% Attendance
                 </span>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 max-w-3xl">
+              <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
                 {isEligible
-                  ? `Your academic attendance (${pct}%) satisfies the university TPO placement policy (minimum 75.0%). All campus drive registration tokens, direct job applications, and AI coaching modules are unlocked.`
-                  : `Your current attendance (${pct}%) is below the mandatory 75.0% university placement criteria. Company drive applications are temporarily locked until makeup attendance or medical leave is approved.`}
+                  ? `Your academic attendance (${pct}%) satisfies the university 75.0% threshold. You can upload resumes, generate STAR interview answers, and apply to campus placement drives.`
+                  : `Your attendance (${pct}%) is below the mandatory 75% university policy. Upload your resume and practice interviews now, but company drive applications remain locked until attendance criteria is met.`}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4 text-xs font-mono">
             <div className="text-right">
-              <span className="text-[11px] text-slate-500 uppercase font-mono block">Policy Threshold</span>
-              <span className="text-sm font-bold text-slate-900 dark:text-slate-200">Min 75.0%</span>
+              <span className="text-slate-400 block text-[10px] uppercase">Requirement</span>
+              <span className="font-bold text-slate-800 dark:text-slate-200">75.0% Min</span>
             </div>
-            <div className="h-8 w-px bg-slate-200 dark:bg-slate-800" />
+            <div className="h-7 w-px bg-slate-200 dark:bg-slate-800" />
             <div className="text-right">
-              <span className="text-[11px] text-slate-500 uppercase font-mono block">Verified Lectures</span>
-              <span className="text-sm font-bold text-slate-900 dark:text-slate-200">
-                {eligibility?.attended_lectures || 34} / {eligibility?.total_lectures || 40}
+              <span className="text-slate-400 block text-[10px] uppercase">Lectures</span>
+              <span className="font-bold text-slate-800 dark:text-slate-200">
+                {eligibility?.attended_lectures || 34}/{eligibility?.total_lectures || 40}
               </span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Navigation Sub-Tabs */}
+      {/* Main Studio Navigation Tabs */}
       <div className="border-b border-slate-200 dark:border-slate-800 flex overflow-x-auto gap-2">
         <button
-          onClick={() => setActiveTab('drives')}
+          onClick={() => setActiveTab('upload')}
           className={`flex items-center gap-2 px-4 py-3 text-sm font-bold border-b-2 transition whitespace-nowrap ${
-            activeTab === 'drives'
+            activeTab === 'upload'
               ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400 dark:border-indigo-400'
               : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
           }`}
         >
-          <Building className="w-4 h-4" />
-          Campus Drives ({drives.length})
-        </button>
-
-        <button
-          onClick={() => setActiveTab('resume')}
-          className={`flex items-center gap-2 px-4 py-3 text-sm font-bold border-b-2 transition whitespace-nowrap ${
-            activeTab === 'resume'
-              ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400 dark:border-indigo-400'
-              : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-          }`}
-        >
-          <Upload className="w-4 h-4" />
-          AI Resume Parser
+          <UploadCloud className="w-4 h-4" />
+          1. Upload & Resume Manager ({resumes.length})
         </button>
 
         <button
@@ -223,7 +289,7 @@ export const PlacementHub = () => {
           }`}
         >
           <Target className="w-4 h-4" />
-          JD Matcher
+          2. Job Description Matcher
         </button>
 
         <button
@@ -235,7 +301,7 @@ export const PlacementHub = () => {
           }`}
         >
           <Bot className="w-4 h-4" />
-          RAG Resume Chat
+          3. RAG Resume Chat
         </button>
 
         <button
@@ -247,7 +313,7 @@ export const PlacementHub = () => {
           }`}
         >
           <HelpCircle className="w-4 h-4" />
-          STAR Mock Interview
+          4. STAR Interview Coach
         </button>
 
         <button
@@ -259,11 +325,63 @@ export const PlacementHub = () => {
           }`}
         >
           <Sparkles className="w-4 h-4" />
-          X-Y-Z Bullet Polisher
+          5. Google X-Y-Z Bullet Polish
+        </button>
+
+        <button
+          onClick={() => setActiveTab('drives')}
+          className={`flex items-center gap-2 px-4 py-3 text-sm font-bold border-b-2 transition whitespace-nowrap ${
+            activeTab === 'drives'
+              ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400 dark:border-indigo-400'
+              : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+          }`}
+        >
+          <Building className="w-4 h-4" />
+          Campus Drives ({drives.length})
         </button>
       </div>
 
-      {/* Tab 1: Campus Placement Drives */}
+      {/* TAB 1: RESUME UPLOAD & PARSER */}
+      {activeTab === 'upload' && (
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-xs">
+          <ResumeUpload
+            resumes={resumes}
+            activeResume={activeResume}
+            onUploadSuccess={handleUploadSuccess}
+            onDeleteSuccess={handleDeleteSuccess}
+          />
+        </div>
+      )}
+
+      {/* TAB 2: JOB DESCRIPTION MATCHER */}
+      {activeTab === 'jobs' && (
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-xs">
+          <JobMatcher activeResume={activeResume} />
+        </div>
+      )}
+
+      {/* TAB 3: RAG RESUME CHAT */}
+      {activeTab === 'rag' && (
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-xs">
+          <RagChat activeResume={activeResume} health={health} />
+        </div>
+      )}
+
+      {/* TAB 4: STAR MOCK INTERVIEW */}
+      {activeTab === 'interview' && (
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-xs">
+          <InterviewPrep activeResume={activeResume} />
+        </div>
+      )}
+
+      {/* TAB 5: GOOGLE X-Y-Z BULLET POLISHER */}
+      {activeTab === 'polish' && (
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-xs">
+          <ResumeSuggestions activeResume={activeResume} />
+        </div>
+      )}
+
+      {/* TAB 6: CAMPUS RECRUITMENT DRIVES */}
       {activeTab === 'drives' && (
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -278,7 +396,7 @@ export const PlacementHub = () => {
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 px-2 py-0.5 rounded">
-                          TPO Verified Drive
+                          TPO Campus Drive
                         </span>
                         <h3 className="font-extrabold text-base text-slate-900 dark:text-slate-100 mt-1">
                           {drive.job_role}
@@ -331,7 +449,7 @@ export const PlacementHub = () => {
                       onClick={() => setActiveTab('jobs')}
                       className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
                     >
-                      Match with My Resume <ArrowRight className="w-3 h-3" />
+                      Analyze Match with Active Resume <ArrowRight className="w-3 h-3" />
                     </button>
 
                     <button
@@ -345,7 +463,7 @@ export const PlacementHub = () => {
                       {driveEligible ? (
                         <>
                           <CheckCircle2 className="w-3.5 h-3.5" />
-                          Apply with Verified Profile
+                          Apply with Active Resume
                         </>
                       ) : (
                         <>
@@ -359,41 +477,6 @@ export const PlacementHub = () => {
               );
             })}
           </div>
-        </div>
-      )}
-
-      {/* Tab 2: Resume Upload & Parsing */}
-      {activeTab === 'resume' && (
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-xs">
-          <ResumeUpload />
-        </div>
-      )}
-
-      {/* Tab 3: Job Description Matcher */}
-      {activeTab === 'jobs' && (
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-xs">
-          <JobMatcher />
-        </div>
-      )}
-
-      {/* Tab 4: RAG Resume Chat */}
-      {activeTab === 'rag' && (
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-xs">
-          <RagChat />
-        </div>
-      )}
-
-      {/* Tab 5: STAR Interview Prep */}
-      {activeTab === 'interview' && (
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-xs">
-          <InterviewPrep />
-        </div>
-      )}
-
-      {/* Tab 6: X-Y-Z Bullet Point Polisher */}
-      {activeTab === 'polish' && (
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-xs">
-          <ResumeSuggestions />
         </div>
       )}
     </div>

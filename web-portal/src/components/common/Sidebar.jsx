@@ -66,7 +66,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
         { label: "Today's Classes", path: '/student/classes', icon: Calendar },
         { label: 'Mark Attendance', path: '/student/mark-attendance', icon: Radio },
         { label: 'Attendance History', path: '/student/history', icon: History },
-        { label: 'Placement & Career AI', path: '/student/career-hub', icon: Briefcase },
+        { label: 'AI-Career-Resume (Upload)', path: '/student/career-hub', icon: Briefcase },
         { label: 'Notifications', path: '/student/notifications', icon: Bell },
         { label: 'My Profile', path: '/student/profile', icon: UserCircle },
       ];

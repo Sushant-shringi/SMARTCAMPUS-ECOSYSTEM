@@ -2,7 +2,7 @@
  * Frontend API Client
  * Wraps all backend REST API endpoints with robust error handling and logging.
  */
-const BASE_URL = '/api';
+const BASE_URL = import.meta.env.VITE_CAREER_API_URL || (typeof window !== 'undefined' && window.location.hostname ? `http://${window.location.hostname}:8001/api` : 'http://127.0.0.1:8001/api');
 
 export async function fetchHealth() {
   const res = await fetch(`${BASE_URL}/health`);

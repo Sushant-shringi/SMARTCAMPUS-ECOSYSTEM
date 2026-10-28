@@ -13,7 +13,9 @@ import {
   Calendar,
   ArrowRight,
   TrendingUp,
-  Percent
+  Percent,
+  Sparkles,
+  UploadCloud
 } from 'lucide-react';
 
 export const StudentDashboard = () => {
@@ -83,6 +85,39 @@ export const StudentDashboard = () => {
           </span>
         </div>
       )}
+
+      {/* AI-Career-Resume Quick Upload & Placement Studio Card */}
+      <div className="bg-gradient-to-r from-indigo-950/60 via-purple-950/40 to-slate-900 border border-indigo-500/30 rounded-3xl p-6 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+        <div className="flex items-start gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center flex-shrink-0 shadow-lg shadow-indigo-500/30">
+            <Sparkles className="w-6 h-6 text-indigo-200" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 uppercase tracking-wider">
+                AI-CAREER-RESUME STUDIO
+              </span>
+              <span className="text-xs text-slate-400 font-medium">GenAI + Local ChromaDB</span>
+            </div>
+            <h3 className="text-lg font-bold text-white mt-1">
+              Upload Your Resume & Prepare for Campus Placements
+            </h3>
+            <p className="text-xs text-slate-400 max-w-2xl mt-0.5">
+              Upload your PDF resume to extract skills, calculate ATS job match scores, practice with STAR mock interview questions, and apply to eligible campus recruitment drives.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 w-full md:w-auto">
+          <Link
+            to="/student/career-hub"
+            className="w-full md:w-auto px-5 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-xl font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2 whitespace-nowrap"
+          >
+            <UploadCloud className="w-4 h-4" />
+            Upload Resume & Open Studio →
+          </Link>
+        </div>
+      </div>
 
       {/* Overview KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
