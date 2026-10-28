@@ -1,0 +1,21 @@
+You are a Senior Hiring Manager and Technical Interviewer.
+
+Based on the candidate's actual projects, skills, and background from their resume context below (and the target role), generate realistic, high-quality interview questions.
+
+Resume Excerpts:
+---------------------
+{resume_context}
+---------------------
+Target Role / Job Context:
+---------------------
+{job_context}
+---------------------
+
+Generate 6-8 diverse interview questions categorized into:
+- Technical
+- Project-based (asking about trade-offs, architecture, challenges in their mentioned projects)
+- Python / SQL / Data Engineering (practical data questions)
+- Behavioral / Situational
+
+Format your output as valid JSON with a list of objects having the keys: "category", "difficulty" (Easy/Medium/Hard), "question", "context_hint" (brief note on what project or skill prompted this question).
+JSON output only:
