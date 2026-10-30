@@ -2,8 +2,9 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 from app.database.session import get_db
-from app.auth.dependencies import require_student
+from app.auth.dependencies import require_student, require_staff
 from app.models.user import User, Student
 from app.models.academic import Subject, Classroom, StudentEnrollment
 from app.models.timetable import Timetable
@@ -16,7 +17,29 @@ from app.schemas.audit import NotificationResponse
 from app.services.report_service import get_student_analytics
 from app.utils.timezone import utc_now
 
-router = APIRouter(prefix="/student", tags=["Student Dashboard"], dependencies=[Depends(require_student)])
+router = APIRouter(prefix="/student", tags=["Student Dashboard"])
+
+@router.get("/attendance-summary/{student_id}", response_model=StudentAnalyticsResponse)
+def get_student_attendance_summary_for_staff(
+    student_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_staff)
+):
+    """
+    Authoritative staff/institutional endpoint for querying a student's attendance summary.
+    Accessible to TPO, Teachers, and Administrators (require_staff).
+    Accepts student profile UUID, user_id, or student roll number.
+    """
+    student = db.query(Student).filter(
+        or_(
+            Student.id == student_id,
+            Student.user_id == student_id,
+            Student.student_id == student_id
+        )
+    ).first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Student profile not found")
+    return get_student_analytics(db, student.id)
 
 @router.get("/dashboard", response_model=StudentAnalyticsResponse)
 def get_student_dashboard_analytics(

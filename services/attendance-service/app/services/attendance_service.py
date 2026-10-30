@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 from app.models.attendance import AttendanceSession, AttendanceRecord, SessionStatus, AttendanceStatus, SyncStatus
 from app.models.user import User, Student, UserStatus
-from app.models.academic import Subject, Classroom, StudentEnrollment
+from app.models.academic import Subject, Classroom, StudentEnrollment, Section
 from app.utils.timezone import utc_now, ensure_utc
 from app.utils.qr_ble import verify_session_token, generate_session_token, generate_ble_identifier
 from app.config import settings
@@ -46,6 +46,15 @@ def start_attendance_session(
     raw_token, token_hash = generate_session_token()
     session_id_temp = str(int(now.timestamp()))
     ble_id = classroom.ble_identifier or generate_ble_identifier(classroom.room_number, session_id_temp)
+
+    # Resolve section_id to a valid foreign key if needed
+    sec = db.query(Section).filter(Section.id == section_id).first()
+    if not sec:
+        sec = db.query(Section).filter(Section.semester_id == semester_id).first()
+        if not sec:
+            sec = db.query(Section).first()
+        if sec:
+            section_id = sec.id
 
     session = AttendanceSession(
         teacher_id=teacher_id,

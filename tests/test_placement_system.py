@@ -18,8 +18,10 @@ import uuid
 import io
 from datetime import datetime, timedelta, timezone
 
-ATTENDANCE_URL = "http://127.0.0.1:8000"
-CAREER_URL = "http://127.0.0.1:8001"
+import os
+
+ATTENDANCE_URL = os.environ.get("ATTENDANCE_URL", "http://127.0.0.1:8005")
+CAREER_URL = os.environ.get("CAREER_URL", "http://127.0.0.1:8001")
 
 @pytest.fixture(scope="session")
 def auth_tokens():

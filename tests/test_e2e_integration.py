@@ -14,9 +14,11 @@ import pymupdf
 import pytest
 import requests
 
-ATTENDANCE_URL = "http://127.0.0.1:8000"
-CAREER_URL = "http://127.0.0.1:8001"
-WEB_URL = "http://127.0.0.1:5173"
+import os
+
+ATTENDANCE_URL = os.environ.get("ATTENDANCE_URL", "http://127.0.0.1:8005")
+CAREER_URL = os.environ.get("CAREER_URL", "http://127.0.0.1:8001")
+WEB_URL = os.environ.get("WEB_URL", "http://127.0.0.1:5173")
 
 def create_sample_pdf(name="Aarav Mehta", skills="Python, FastAPI, SQL, Docker, AWS, React, ChromaDB"):
     doc = pymupdf.open()
@@ -558,16 +560,27 @@ def test_7_1_attendance_database_records_persisted():
 
 def test_7_2_career_database_records_persisted(uploaded_resume):
     db_path = r"D:\SMARTCAMPUS ECOSYSTEM\services\career-ai-service\data\career_assistant.db"
-    assert os.path.exists(db_path), "Career SQLite database does not exist on disk"
+    row = None
+    if os.path.exists(db_path):
+        conn = sqlite3.connect(db_path)
+        cur = conn.cursor()
+        cur.execute("SELECT id, filename, user_id FROM resumes WHERE id = ?", (uploaded_resume["id"],))
+        row = cur.fetchone()
+        conn.close()
 
-    conn = sqlite3.connect(db_path)
-    cur = conn.cursor()
-    cur.execute("SELECT id, filename, user_id FROM resumes WHERE id = ?", (uploaded_resume["id"],))
-    row = cur.fetchone()
+    # If running against containerized deployment, check inside container volume
+    if row is None:
+        import subprocess, json
+        res_id = uploaded_resume["id"]
+        py_code = f"import sqlite3, json; conn = sqlite3.connect('/app/data/career_assistant.db'); cur = conn.cursor(); cur.execute('SELECT id, filename, user_id FROM resumes WHERE id = ?', ({res_id},)); r = cur.fetchone(); print(json.dumps(r) if r else 'null')"
+        cmd = ["docker", "exec", "smartcampus-career-ai", "python", "-c", py_code]
+        proc = subprocess.run(cmd, capture_output=True, text=True)
+        if proc.returncode == 0 and proc.stdout.strip() and proc.stdout.strip() != "null":
+            row = json.loads(proc.stdout.strip())
+
     assert row is not None, "Uploaded resume not found in SQLite"
     assert row[1] == "aarav_mehta_resume.pdf"
     assert row[2] is not None, "user_id column is missing or null"
-    conn.close()
 
 def test_7_3_chromadb_vector_store_persisted():
     vector_dir = r"D:\SMARTCAMPUS ECOSYSTEM\services\career-ai-service\data\vector_db"

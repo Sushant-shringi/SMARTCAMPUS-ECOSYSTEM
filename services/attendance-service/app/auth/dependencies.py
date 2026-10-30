@@ -23,7 +23,7 @@ def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    payload = decode_token(token, settings.SECRET_KEY)
+    payload = decode_token(auth_token, settings.SECRET_KEY)
     if not payload or payload.get("type") != "access":
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

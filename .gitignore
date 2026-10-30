@@ -17,6 +17,8 @@ __pycache__/
 
 # Databases & Vector Stores
 *.db
+*.db-wal
+*.db-shm
 *.sqlite
 *.sqlite3
 **/vector_db/
@@ -25,7 +27,9 @@ __pycache__/
 *.bin
 services/career-ai-service/data/
 
-# Internal Backups
+# Backups & Restore Sandboxes
+backups/
+temp_restore_drill/
 .backup_phase1/
 
 # Android & Gradle

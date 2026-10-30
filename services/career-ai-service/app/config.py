@@ -3,8 +3,11 @@ Application Configuration
 Defines environment variables, file paths, and default settings.
 """
 import os
+import json
 from pathlib import Path
+from typing import List, Union
 from pydantic_settings import BaseSettings
+from pydantic import field_validator, model_validator
 
 curr_path = Path(__file__).resolve()
 if curr_path.parent.parent.name == "backend":
@@ -20,6 +23,7 @@ if not PROMPTS_DIR.exists():
 DEFAULT_ATTENDANCE_DB = BASE_DIR.parent / "attendance-service" / "smartattend.db"
 
 class Settings(BaseSettings):
+    ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
     PROJECT_NAME: str = "AI Career & Resume Assistant"
     VERSION: str = "1.0.0"
     API_PREFIX: str = "/api"
@@ -57,8 +61,56 @@ class Settings(BaseSettings):
     ATTENDANCE_DATABASE_URL: str = os.getenv("ATTENDANCE_DATABASE_URL", str(DEFAULT_ATTENDANCE_DB))
     MINIMUM_ATTENDANCE_THRESHOLD: float = float(os.getenv("MINIMUM_ATTENDANCE_PLACEMENT_THRESHOLD", "75.0"))
     
-    # CORS
-    CORS_ORIGINS: list[str] = ["*"]
+    # Explicit CORS Whitelist
+    CORS_ORIGINS: Union[List[str], str] = [
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:3000",
+        "http://localhost:8005",
+        "http://127.0.0.1:8005",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+        "http://localhost:8001",
+        "http://127.0.0.1:8001",
+    ]
+
+    @field_validator("CORS_ORIGINS", mode="before")
+    @classmethod
+    def assemble_cors_origins(cls, v: Union[str, List[str]]) -> List[str]:
+        if isinstance(v, str) and not v.startswith("["):
+            return [i.strip() for i in v.split(",") if i.strip()]
+        elif isinstance(v, str) and v.startswith("["):
+            return json.loads(v)
+        elif isinstance(v, list):
+            return v
+        return []
+
+    @model_validator(mode="after")
+    def validate_production_security(self):
+        env = (self.ENVIRONMENT or "").strip().lower()
+        if env == "production":
+            insecure_markers = [
+                "super-secret",
+                "change-in-production",
+                "secret-key",
+                "default",
+                "replace_with",
+            ]
+            if not self.JWT_SECRET or len(self.JWT_SECRET.strip()) < 32:
+                raise ValueError(
+                    "Insecure JWT_SECRET in production: Key length must be at least 32 characters."
+                )
+            if any(marker in self.JWT_SECRET.lower() for marker in insecure_markers):
+                raise ValueError(
+                    "Insecure JWT_SECRET in production: Key cannot use default/template phrases."
+                )
+            cors_list = self.CORS_ORIGINS if isinstance(self.CORS_ORIGINS, list) else [self.CORS_ORIGINS]
+            if "*" in cors_list:
+                raise ValueError(
+                    "CORS_ORIGINS cannot contain wildcard '*' in production when credentials are enabled."
+                )
+        return self
     
     class Config:
         env_file = ".env"

@@ -14,12 +14,15 @@ async def lifespan(app: FastAPI):
     # Initialize DB tables
     print("Creating database tables...")
     Base.metadata.create_all(bind=engine)
-    # Seed database if not seeded
-    db = SessionLocal()
-    try:
-        seed_database(db)
-    finally:
-        db.close()
+    # Seed database if not seeded (development/staging only)
+    if settings.ENVIRONMENT != "production":
+        db = SessionLocal()
+        try:
+            seed_database(db)
+        finally:
+            db.close()
+    else:
+        print("Production environment: Automatic database seeding disabled.")
     yield
     print("Shutting down SmartAttend application...")
 
@@ -36,7 +39,7 @@ app = FastAPI(
 # CORS Configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Allow all origins for dev/testing ease
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -6,7 +6,7 @@ class SyncQueueManager {
     this.isSyncing = false;
     this.syncListeners = new Set();
     this.autoSyncTimer = null;
-    this.baseURL = import.meta.env.VITE_API_URL || (typeof window !== 'undefined' && window.location.hostname ? `http://${window.location.hostname}:8000/api/v1` : 'http://192.168.1.8:8000/api/v1');
+    this.baseURL = import.meta.env.VITE_API_URL || (typeof window !== 'undefined' && window.location.hostname ? `http://${window.location.hostname}:8005/api/v1` : 'http://192.168.1.8:8005/api/v1');
 
     // Auto-listen to window online events
     if (typeof window !== 'undefined') {

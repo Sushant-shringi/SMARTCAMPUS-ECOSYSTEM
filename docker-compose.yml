@@ -6,20 +6,21 @@ services:
       dockerfile: Dockerfile
     container_name: smartcampus-attendance
     ports:
-      - "8000:8000"
+      - "8005:8000"
     environment:
       - PORT=8000
-      - DATABASE_URL=sqlite:///./smartattend.db
+      - DATABASE_URL=sqlite:////app/data/smartattend.db
       - JWT_SECRET=smartcampus_super_secure_jwt_secret_key_2026
-      - CORS_ORIGINS=*
+      - CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173,http://localhost:8005,http://127.0.0.1:8005,http://localhost:8000,http://127.0.0.1:8000,http://localhost:8001,http://127.0.0.1:8001
     volumes:
       - attendance-data:/app/data
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/docs"]
-      interval: 30s
-      timeout: 10s
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/docs')"]
+      interval: 15s
+      timeout: 5s
       retries: 3
+      start_period: 10s
 
   # 2. Career & Placement AI Service (RAG, Vector Search, LLM)
   career-ai-service:
@@ -31,6 +32,7 @@ services:
       - "8001:8001"
     environment:
       - PORT=8001
+      - DATABASE_URL=sqlite:////app/data/career_assistant.db
       - LLM_PROVIDER=gemini
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
       - GEMINI_MODEL=gemini-3.1-flash-lite
@@ -38,27 +40,39 @@ services:
       - EMBEDDING_MODEL_NAME=all-MiniLM-L6-v2
       - ATTENDANCE_SERVICE_URL=http://attendance-service:8000
       - JWT_SECRET=smartcampus_super_secure_jwt_secret_key_2026
-      - CORS_ORIGINS=*
+      - CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173,http://localhost:8005,http://127.0.0.1:8005,http://localhost:8000,http://127.0.0.1:8000,http://localhost:8001,http://127.0.0.1:8001
     volumes:
       - career-data:/app/data
     depends_on:
-      - attendance-service
+      attendance-service:
+        condition: service_healthy
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/api/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
 
   # 3. Unified Web Portal (React + Vite + Tailwind)
   web-portal:
     build:
       context: ./web-portal
       dockerfile: Dockerfile
+      args:
+        VITE_ATTENDANCE_API_URL: http://localhost:8005/api/v1
+        VITE_CAREER_API_URL: http://localhost:8001/api
     container_name: smartcampus-web-portal
     ports:
       - "5173:80"
     environment:
-      - VITE_ATTENDANCE_API_URL=http://localhost:8000/api/v1
+      - VITE_ATTENDANCE_API_URL=http://localhost:8005/api/v1
       - VITE_CAREER_API_URL=http://localhost:8001/api
     depends_on:
-      - attendance-service
-      - career-ai-service
+      attendance-service:
+        condition: service_healthy
+      career-ai-service:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:

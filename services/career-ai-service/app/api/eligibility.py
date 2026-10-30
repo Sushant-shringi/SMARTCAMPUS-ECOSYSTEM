@@ -186,23 +186,29 @@ def _check_attendance_via_database(user_id: str) -> Optional[tuple[float, int, i
     except Exception:
         return None
 
-async def _fetch_attendance_from_service(token: str) -> Optional[tuple[float, int, int, str]]:
-    """Calls Attendance Service /api/v1/student/dashboard with student's JWT token."""
+async def _fetch_attendance_from_service(token: str, student_id: Optional[str] = None) -> Optional[tuple[float, int, int, str]]:
+    """Calls Attendance Service /api/v1/student/attendance-summary/{student_id} or /api/v1/student/dashboard with JWT token."""
     if not settings.ATTENDANCE_SERVICE_URL:
         return None
         
-    url = f"{settings.ATTENDANCE_SERVICE_URL.replace('localhost', '127.0.0.1').rstrip('/')}/api/v1/student/dashboard"
-    try:
-        async with httpx.AsyncClient(timeout=4.0) as client:
-            resp = await client.get(url, headers={"Authorization": f"Bearer {token}"})
-            if resp.status_code == 200:
-                data = resp.json()
-                pct = float(data.get("overall_percentage", 0.0))
-                total = int(data.get("total_sessions", 0))
-                present = int(data.get("present_count", 0)) + int(data.get("late_count", 0))
-                return pct, total, present, "Verified Student"
-    except Exception:
-        pass
+    base_url = settings.ATTENDANCE_SERVICE_URL.replace('localhost', '127.0.0.1').rstrip('/')
+    endpoints = []
+    if student_id:
+        endpoints.append(f"{base_url}/api/v1/student/attendance-summary/{student_id}")
+    endpoints.append(f"{base_url}/api/v1/student/dashboard")
+
+    for url in endpoints:
+        try:
+            async with httpx.AsyncClient(timeout=4.0) as client:
+                resp = await client.get(url, headers={"Authorization": f"Bearer {token}"})
+                if resp.status_code == 200:
+                    data = resp.json()
+                    pct = float(data.get("overall_percentage", 0.0))
+                    total = int(data.get("total_sessions", 0))
+                    present = int(data.get("present_count", 0)) + int(data.get("late_count", 0))
+                    return pct, total, present, "Verified Student"
+        except Exception:
+            continue
     return None
 
 class PlacementEligibilityResponse(BaseModel):
@@ -228,7 +234,7 @@ async def evaluate_student_eligibility(
     
     # 1. Try Attendance HTTP Microservice first if token is available
     if raw_token:
-        attendance_data = await _fetch_attendance_from_service(raw_token)
+        attendance_data = await _fetch_attendance_from_service(raw_token, target_user_id)
         
     # 2. Try configured database as local fallback
     if attendance_data is None:
