@@ -7,7 +7,7 @@ from pydantic import field_validator
 class Settings(BaseSettings):
     PROJECT_NAME: str = "SmartAttend"
     API_V1_STR: str = "/api/v1"
-    SECRET_KEY: str = "super-secret-smartattend-key-change-in-production-long-random-string"
+    SECRET_KEY: str = os.getenv("JWT_SECRET", "super-secret-smartattend-key-change-in-production-long-random-string")
     REFRESH_SECRET_KEY: str = "super-secret-refresh-key-change-in-production-long-random-string"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60

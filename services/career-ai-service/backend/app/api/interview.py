@@ -1,30 +1,46 @@
 """
-Interview Prep API Endpoints
+Interview Prep API Endpoints with Student Data Isolation
 """
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from backend.app.database.session import get_db
-from backend.app.database.models import ResumeModel, JobDescriptionModel, InterviewQuestionModel
-from backend.app.schemas.interview import (
-    InterviewGenerateRequest, InterviewGenerateResponse, InterviewQuestionItem,
-    InterviewAnswerRequest, InterviewAnswerResponse
-)
-from backend.app.services.interview_service import interview_service
+
+try:
+    from app.database.session import get_db
+    from app.database.models import ResumeModel, JobDescriptionModel, InterviewQuestionModel
+    from app.schemas.interview import (
+        InterviewGenerateRequest, InterviewGenerateResponse, InterviewQuestionItem,
+        InterviewAnswerRequest, InterviewAnswerResponse
+    )
+    from app.services.interview_service import interview_service
+    from app.auth.dependencies import require_student, AuthenticatedUser
+except ImportError:
+    from backend.app.database.session import get_db
+    from backend.app.database.models import ResumeModel, JobDescriptionModel, InterviewQuestionModel
+    from backend.app.schemas.interview import (
+        InterviewGenerateRequest, InterviewGenerateResponse, InterviewQuestionItem,
+        InterviewAnswerRequest, InterviewAnswerResponse
+    )
+    from backend.app.services.interview_service import interview_service
+    from backend.app.auth.dependencies import require_student, AuthenticatedUser
 
 router = APIRouter(prefix="/interview", tags=["Interview Prep"])
 
 @router.post("/generate", response_model=InterviewGenerateResponse)
 def generate_interview_questions(
     request: InterviewGenerateRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(require_student)
 ):
     """
-    Generates realistic technical, project-based, and behavioral interview questions
-    tailored to the candidate's resume projects and target role.
+    Generates realistic interview questions tailored to the candidate's resume,
+    enforcing that the student owns the requested resume.
     """
-    resume = db.query(ResumeModel).filter(ResumeModel.id == request.resume_id).first()
+    resume = db.query(ResumeModel).filter(
+        ResumeModel.id == request.resume_id,
+        ResumeModel.user_id == current_user.user_id
+    ).first()
     if not resume:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resume not found.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resume not found or access denied.")
 
     job_context = ""
     if request.job_description_id:
@@ -55,10 +71,9 @@ def generate_interview_questions(
 
         result_items.append(InterviewQuestionItem(
             id=q_obj.id,
-            category=q_obj.category,
-            difficulty=q_obj.difficulty,
             question=q_obj.question,
-            context_hint=q.get("context_hint", "")
+            category=q_obj.category,
+            difficulty=q_obj.difficulty
         ))
 
     return InterviewGenerateResponse(
@@ -69,24 +84,28 @@ def generate_interview_questions(
 @router.post("/answer", response_model=InterviewAnswerResponse)
 def generate_sample_answer(
     request: InterviewAnswerRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(require_student)
 ):
     """
-    Generates a high-quality STAR method answer for a specific interview question,
-    grounded in the candidate's actual resume projects.
+    Generates STAR-method structured interview answers using the student's resume context.
     """
-    resume = db.query(ResumeModel).filter(ResumeModel.id == request.resume_id).first()
+    resume = db.query(ResumeModel).filter(
+        ResumeModel.id == request.resume_id,
+        ResumeModel.user_id == current_user.user_id
+    ).first()
     if not resume:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resume not found.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resume not found or access denied.")
 
-    answer, source_chunks = interview_service.generate_answer(
+    answer_data = interview_service.generate_star_answer(
         resume_id=resume.id,
         question=request.question,
-        category=request.category or "Technical"
+        category=request.category
     )
 
     return InterviewAnswerResponse(
         question=request.question,
-        sample_answer=answer,
-        source_chunks=source_chunks
+        star_answer=answer_data["star_answer"],
+        talking_points=answer_data.get("talking_points", []),
+        suggested_metric=answer_data.get("suggested_metric")
     )

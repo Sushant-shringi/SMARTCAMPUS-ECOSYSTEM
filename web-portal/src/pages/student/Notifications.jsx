@@ -68,12 +68,12 @@ export const Notifications = () => {
                 onClick={() => handleMarkRead(n.id)}
                 className={`p-5 rounded-2xl border transition-all cursor-pointer ${
                   n.is_read
-                    ? 'bg-white/60 dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 opacity-70'
-                    : 'bg-white dark:bg-slate-900 border-teal-500/40 shadow-sm'
+                    ? 'theme-card opacity-70'
+                    : 'theme-card border-blue-500/40 shadow-sm'
                 }`}
               >
                 <div className="flex items-start gap-3.5">
-                  <div className="p-2.5 rounded-xl bg-teal-500/10 text-teal-600 dark:text-teal-400 flex-shrink-0 mt-0.5">
+                  <div className="p-2.5 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5">
                     <Icon className="w-5 h-5" />
                   </div>
                   <div className="flex-1">

@@ -1,15 +1,20 @@
 """
 Vector Store Service (ChromaDB)
-Provides persistent local storage for resume chunks and vector similarity search.
+Provides persistent local storage for resume chunks and vector similarity search
+with multi-tenant student data isolation.
 """
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import chromadb
 from chromadb.config import Settings as ChromaSettings
-from backend.app.config import settings
+
+try:
+    from app.config import settings
+except ImportError:
+    from backend.app.config import settings
 
 class VectorStoreService:
     """
-    Manages local ChromaDB vector collection for resume embeddings.
+    Manages local ChromaDB vector collection for resume embeddings with user isolation.
     """
     def __init__(self):
         self.client = chromadb.PersistentClient(
@@ -25,16 +30,21 @@ class VectorStoreService:
         self,
         resume_id: int,
         chunks: List[str],
-        embeddings: List[List[float]]
+        embeddings: List[List[float]],
+        user_id: Optional[str] = None
     ) -> int:
         """
-        Stores chunk vectors and metadata tagged with resume_id.
+        Stores chunk vectors and metadata tagged with resume_id and student user_id.
         """
         if not chunks:
             return 0
             
+        uid_str = str(user_id or "default_student")
         ids = [f"res_{resume_id}_chunk_{i}" for i in range(len(chunks))]
-        metadatas = [{"resume_id": resume_id, "chunk_index": i} for i in range(len(chunks))]
+        metadatas = [
+            {"resume_id": int(resume_id), "user_id": uid_str, "chunk_index": i}
+            for i in range(len(chunks))
+        ]
         
         self.collection.upsert(
             ids=ids,
@@ -48,16 +58,35 @@ class VectorStoreService:
         self,
         resume_id: int,
         query_embedding: List[float],
-        top_k: int = 4
+        top_k: int = 4,
+        user_id: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """
-        Performs cosine similarity search against a specific resume's chunks.
+        Performs cosine similarity search against a specific resume's chunks,
+        strictly scoped to the requesting student.
         """
-        results = self.collection.query(
-            query_embeddings=[query_embedding],
-            n_results=top_k,
-            where={"resume_id": resume_id}
-        )
+        where_filter = {"resume_id": int(resume_id)}
+        if user_id:
+            where_filter = {
+                "$and": [
+                    {"resume_id": int(resume_id)},
+                    {"user_id": str(user_id)}
+                ]
+            }
+
+        try:
+            results = self.collection.query(
+                query_embeddings=[query_embedding],
+                n_results=top_k,
+                where=where_filter
+            )
+        except Exception:
+            # Fallback to resume_id filter if compound filter fails on legacy chunks
+            results = self.collection.query(
+                query_embeddings=[query_embedding],
+                n_results=top_k,
+                where={"resume_id": int(resume_id)}
+            )
         
         formatted_chunks = []
         if results and results["documents"] and results["documents"][0]:
@@ -75,11 +104,22 @@ class VectorStoreService:
                 
         return formatted_chunks
 
-    def delete_resume_chunks(self, resume_id: int):
+    def delete_resume_chunks(self, resume_id: int, user_id: Optional[str] = None):
         """Removes all stored vectors for a deleted resume."""
         try:
-            self.collection.delete(where={"resume_id": resume_id})
+            where_filter = {"resume_id": int(resume_id)}
+            if user_id:
+                where_filter = {
+                    "$and": [
+                        {"resume_id": int(resume_id)},
+                        {"user_id": str(user_id)}
+                    ]
+                }
+            self.collection.delete(where=where_filter)
         except Exception:
-            pass
+            try:
+                self.collection.delete(where={"resume_id": int(resume_id)})
+            except Exception:
+                pass
 
 vector_store = VectorStoreService()

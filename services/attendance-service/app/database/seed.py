@@ -27,7 +27,7 @@ def seed_database(db: Session = None):
 
         print("Seeding initial SmartAttend database...")
 
-        # 1. Admin User
+        # 1. Admin & TPO Users
         admin = User(
             username="admin",
             email="admin@smartattend.edu",
@@ -37,7 +37,16 @@ def seed_database(db: Session = None):
             role=UserRole.ADMIN,
             status=UserStatus.ACTIVE
         )
-        db.add(admin)
+        tpo = User(
+            username="tpo",
+            email="tpo@smartattend.edu",
+            hashed_password=get_password_hash("tpo123"),
+            full_name="Dr. Vikram Malhotra (TPO)",
+            phone="+91-9876509999",
+            role=UserRole.TPO,
+            status=UserStatus.ACTIVE
+        )
+        db.add_all([admin, tpo])
         db.flush()
 
         # 2. Departments

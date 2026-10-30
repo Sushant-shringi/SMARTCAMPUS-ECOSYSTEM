@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # 1. Attendance & Campus Academic Service (SmartAttend Core)
   attendance-service:
@@ -39,6 +37,8 @@ services:
       - OLLAMA_BASE_URL=http://host.docker.internal:11434
       - EMBEDDING_MODEL_NAME=all-MiniLM-L6-v2
       - ATTENDANCE_SERVICE_URL=http://attendance-service:8000
+      - JWT_SECRET=smartcampus_super_secure_jwt_secret_key_2026
+      - CORS_ORIGINS=*
     volumes:
       - career-data:/app/data
     depends_on:

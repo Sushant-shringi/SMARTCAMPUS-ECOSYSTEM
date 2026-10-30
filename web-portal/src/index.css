@@ -2,13 +2,228 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ==========================================================================
+   SMART CAMPUS ECOSYSTEM — 5 THEME SYSTEM DESIGN TOKENS
+   ========================================================================== */
+
+:root,
+[data-theme="university-blue"] {
+  --app-bg: #f3f7fc;
+  --surface-card: #ffffff;
+  --surface-card-hover: #fcfdfe;
+  --surface-nav: rgba(255, 255, 255, 0.92);
+  --surface-sidebar: #ffffff;
+  --surface-secondary: #f0f5fc;
+  --surface-input: #f8fafc;
+  --border-main: #e2e8f0;
+  --border-subtle: #edf2f7;
+  --text-heading: #0f172a;
+  --text-body: #334155;
+  --text-subtle: #64748b;
+  --brand-primary: #2563eb;
+  --brand-primary-hover: #1d4ed8;
+  --brand-accent-bg: #eff6ff;
+  --brand-accent-text: #1d4ed8;
+  --badge-bg: #dbeafe;
+  --badge-text: #1e40af;
+  --card-shadow: 0 2px 8px -2px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.04);
+  --card-shadow-hover: 0 10px 20px -3px rgba(37, 99, 235, 0.08), 0 4px 6px -2px rgba(15, 23, 42, 0.04);
+  --hero-gradient: linear-gradient(135deg, #2563eb 0%, #1d4ed8 50%, #1e3a8a 100%);
+}
+
+[data-theme="midnight-dark"] {
+  --app-bg: #090e1a;
+  --surface-card: #111a2e;
+  --surface-card-hover: #16223b;
+  --surface-nav: rgba(17, 26, 46, 0.88);
+  --surface-sidebar: #0d1526;
+  --surface-secondary: #16223b;
+  --surface-input: #0b1324;
+  --border-main: #1e2e4f;
+  --border-subtle: #17243d;
+  --text-heading: #f8fafc;
+  --text-body: #cbd5e1;
+  --text-subtle: #94a3b8;
+  --brand-primary: #38bdf8;
+  --brand-primary-hover: #60a5fa;
+  --brand-accent-bg: rgba(56, 189, 248, 0.12);
+  --brand-accent-text: #38bdf8;
+  --badge-bg: rgba(56, 189, 248, 0.18);
+  --badge-text: #7dd3fc;
+  --card-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.45);
+  --card-shadow-hover: 0 12px 28px -4px rgba(56, 189, 248, 0.15);
+  --hero-gradient: linear-gradient(135deg, #0284c7 0%, #2563eb 60%, #4f46e5 100%);
+}
+
+[data-theme="lavender-ai"] {
+  --app-bg: #f7f5ff;
+  --surface-card: #ffffff;
+  --surface-card-hover: #faf9ff;
+  --surface-nav: rgba(255, 255, 255, 0.92);
+  --surface-sidebar: #fcfbfe;
+  --surface-secondary: #f3f0fc;
+  --surface-input: #faf8ff;
+  --border-main: #ede8f8;
+  --border-subtle: #f5f2fb;
+  --text-heading: #1e1338;
+  --text-body: #473a63;
+  --text-subtle: #796c94;
+  --brand-primary: #7c3aed;
+  --brand-primary-hover: #6d28d9;
+  --brand-accent-bg: #f3e8ff;
+  --brand-accent-text: #7c3aed;
+  --badge-bg: #ede9fe;
+  --badge-text: #6d28d9;
+  --card-shadow: 0 4px 16px -2px rgba(124, 58, 237, 0.07);
+  --card-shadow-hover: 0 12px 24px -4px rgba(124, 58, 237, 0.14);
+  --hero-gradient: linear-gradient(135deg, #7c3aed 0%, #6366f1 60%, #8b5cf6 100%);
+}
+
+[data-theme="glass-blue"] {
+  --app-bg: #f0f7fe;
+  --surface-card: rgba(255, 255, 255, 0.78);
+  --surface-card-hover: rgba(255, 255, 255, 0.92);
+  --surface-nav: rgba(240, 247, 254, 0.82);
+  --surface-sidebar: rgba(255, 255, 255, 0.72);
+  --surface-secondary: rgba(224, 242, 254, 0.55);
+  --surface-input: rgba(255, 255, 255, 0.9);
+  --border-main: rgba(186, 230, 253, 0.75);
+  --border-subtle: rgba(224, 242, 254, 0.6);
+  --text-heading: #082f49;
+  --text-body: #0c4a6e;
+  --text-subtle: #0369a1;
+  --brand-primary: #0284c7;
+  --brand-primary-hover: #0369a1;
+  --brand-accent-bg: rgba(224, 242, 254, 0.75);
+  --brand-accent-text: #0369a1;
+  --badge-bg: rgba(186, 230, 253, 0.7);
+  --badge-text: #0284c7;
+  --card-shadow: 0 8px 30px -4px rgba(2, 132, 199, 0.1);
+  --card-shadow-hover: 0 16px 36px -6px rgba(2, 132, 199, 0.18);
+  --hero-gradient: linear-gradient(135deg, #0284c7 0%, #06b6d4 100%);
+}
+
+[data-theme="career-gradient"] {
+  --app-bg: #f8fafc;
+  --surface-card: #ffffff;
+  --surface-card-hover: #fcfdfe;
+  --surface-nav: rgba(255, 255, 255, 0.94);
+  --surface-sidebar: #ffffff;
+  --surface-secondary: #f1f5f9;
+  --surface-input: #f8fafc;
+  --border-main: #e2e8f0;
+  --border-subtle: #f1f5f9;
+  --text-heading: #0f172a;
+  --text-body: #334155;
+  --text-subtle: #64748b;
+  --brand-primary: #4f46e5;
+  --brand-primary-hover: #4338ca;
+  --brand-accent-bg: #eef2ff;
+  --brand-accent-text: #4f46e5;
+  --badge-bg: #e0e7ff;
+  --badge-text: #3730a3;
+  --card-shadow: 0 4px 16px -2px rgba(79, 70, 229, 0.08);
+  --card-shadow-hover: 0 14px 28px -4px rgba(79, 70, 229, 0.18);
+  --hero-gradient: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #db2777 100%);
+}
+
+/* ==========================================================================
+   BASE & TYPOGRAPHY
+   ========================================================================== */
+
 @layer base {
   body {
-    @apply bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 font-sans antialiased selection:bg-teal-500 selection:text-white;
+    background-color: var(--app-bg);
+    color: var(--text-body);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    antialiased: true;
+    min-height: 100vh;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    color: var(--text-heading);
+    letter-spacing: -0.02em;
   }
 }
 
-/* Custom modern scrollbars */
+/* Reduced Motion Compliance */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ==========================================================================
+   COMPONENT HELPERS (Theme-Driven Classes)
+   ========================================================================== */
+
+.theme-card {
+  background-color: var(--surface-card);
+  border: 1px solid var(--border-main);
+  box-shadow: var(--card-shadow);
+  border-radius: 1.25rem;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.theme-card:hover {
+  box-shadow: var(--card-shadow-hover);
+}
+
+[data-theme="glass-blue"] .theme-card {
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.theme-nav {
+  background-color: var(--surface-nav);
+  border-bottom: 1px solid var(--border-main);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.theme-sidebar {
+  background-color: var(--surface-sidebar);
+  border-right: 1px solid var(--border-main);
+}
+
+[data-theme="glass-blue"] .theme-sidebar {
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.theme-input {
+  background-color: var(--surface-input);
+  border: 1px solid var(--border-main);
+  color: var(--text-heading);
+  border-radius: 0.75rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.theme-input:focus {
+  border-color: var(--brand-primary);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--brand-accent-bg);
+}
+
+/* Career Gradient Specific Hero & Accent Enhancements */
+[data-theme="career-gradient"] .gradient-border {
+  position: relative;
+  background: linear-gradient(135deg, #4f46e5, #ec4899);
+  padding: 1px;
+  border-radius: 1.25rem;
+}
+
+[data-theme="career-gradient"] .gradient-border > * {
+  background: var(--surface-card);
+  border-radius: calc(1.25rem - 1px);
+}
+
+/* Modern Accessible Scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -19,23 +234,10 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.4);
+  background: var(--border-main);
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.7);
-}
-
-.dark ::-webkit-scrollbar-thumb {
-  background: rgba(51, 65, 85, 0.5);
-}
-
-.dark ::-webkit-scrollbar-thumb:hover {
-  background: rgba(51, 65, 85, 0.8);
-}
-
-/* Glassmorphism helpers */
-.glass-panel {
-  @apply bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200/80 dark:border-slate-800/80 shadow-sm;
+  background: var(--text-subtle);
 }

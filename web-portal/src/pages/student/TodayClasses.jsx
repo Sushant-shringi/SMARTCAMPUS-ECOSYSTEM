@@ -40,10 +40,10 @@ export const TodayClasses = () => {
           {classes.map((c) => (
             <div
               key={c.timetable_id}
-              className={`bg-white dark:bg-slate-900 border rounded-3xl p-6 shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-4 ${
+              className={`theme-card p-6 flex flex-col justify-between space-y-4 ${
                 c.is_session_active && !c.already_marked
-                  ? 'border-teal-500 ring-2 ring-teal-500/20'
-                  : 'border-slate-200 dark:border-slate-800'
+                  ? 'border-blue-500 ring-2 ring-blue-500/25'
+                  : ''
               }`}
             >
               <div className="space-y-3">

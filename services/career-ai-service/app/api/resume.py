@@ -1,32 +1,48 @@
 """
 Resume Management API Endpoints
-Handles PDF resume upload, parsing, embedding extraction, and listing.
+Handles PDF resume upload, parsing, embedding extraction, and listing
+with student user authentication and data isolation.
 """
 import json
 import shutil
 from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 from sqlalchemy.orm import Session
-from backend.app.config import settings
-from backend.app.database.session import get_db
-from backend.app.database.models import ResumeModel
-from backend.app.schemas.resume import ResumeUploadResponse, ResumeSummary, ResumeDetail
-from backend.app.services.pdf_parser import PDFParser, PDFParsingError
-from backend.app.services.text_cleaner import chunk_text
-from backend.app.services.skill_extractor import extract_skills_from_text
-from backend.app.services.embedding_service import embedding_service
-from backend.app.services.vector_store import vector_store
+
+try:
+    from app.config import settings
+    from app.database.session import get_db
+    from app.database.models import ResumeModel
+    from app.schemas.resume import ResumeUploadResponse, ResumeSummary, ResumeDetail
+    from app.services.pdf_parser import PDFParser, PDFParsingError
+    from app.services.text_cleaner import chunk_text
+    from app.services.skill_extractor import extract_skills_from_text
+    from app.services.embedding_service import embedding_service
+    from app.services.vector_store import vector_store
+    from app.auth.dependencies import require_student, AuthenticatedUser
+except ImportError:
+    from backend.app.config import settings
+    from backend.app.database.session import get_db
+    from backend.app.database.models import ResumeModel
+    from backend.app.schemas.resume import ResumeUploadResponse, ResumeSummary, ResumeDetail
+    from backend.app.services.pdf_parser import PDFParser, PDFParsingError
+    from backend.app.services.text_cleaner import chunk_text
+    from backend.app.services.skill_extractor import extract_skills_from_text
+    from backend.app.services.embedding_service import embedding_service
+    from backend.app.services.vector_store import vector_store
+    from backend.app.auth.dependencies import require_student, AuthenticatedUser
 
 router = APIRouter(prefix="/resume", tags=["Resume"])
 
 @router.post("/upload", response_model=ResumeUploadResponse, status_code=status.HTTP_201_CREATED)
 async def upload_resume(
     file: UploadFile = File(...),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(require_student)
 ):
     """
-    Uploads a PDF resume, extracts text, identifies skills, generates embeddings,
-    and indexes chunks in the vector database.
+    Uploads a PDF resume for the authenticated student, extracts text,
+    identifies skills, generates embeddings, and indexes chunks in vector store.
     """
     if not file.filename.lower().endswith(".pdf"):
         raise HTTPException(
@@ -57,8 +73,10 @@ async def upload_resume(
             detail=f"Unexpected error during PDF extraction: {str(e)}"
         )
 
-    # 3. Save physical PDF file to upload directory
-    file_path = settings.UPLOAD_DIR / file.filename
+    # 3. Save physical PDF file to student's upload directory
+    user_upload_dir = settings.UPLOAD_DIR / current_user.user_id
+    user_upload_dir.mkdir(parents=True, exist_ok=True)
+    file_path = user_upload_dir / file.filename
     with open(file_path, "wb") as f:
         f.write(content)
 
@@ -68,8 +86,9 @@ async def upload_resume(
     # 5. Chunk text for vector store
     chunks = chunk_text(cleaned_text, chunk_size=settings.CHUNK_SIZE, chunk_overlap=settings.CHUNK_OVERLAP)
 
-    # 6. Save Resume metadata into SQLite
+    # 6. Save Resume metadata into SQLite with student user_id isolation
     resume = ResumeModel(
+        user_id=current_user.user_id,
         filename=file.filename,
         file_path=str(file_path),
         raw_text=raw_text,
@@ -81,13 +100,14 @@ async def upload_resume(
     db.commit()
     db.refresh(resume)
 
-    # 7. Generate vector embeddings & store in ChromaDB
+    # 7. Generate vector embeddings & store in ChromaDB tagged with student user_id
     if chunks:
         embeddings = embedding_service.embed_documents(chunks)
         vector_store.add_resume_chunks(
             resume_id=resume.id,
             chunks=chunks,
-            embeddings=embeddings
+            embeddings=embeddings,
+            user_id=current_user.user_id
         )
 
     return ResumeUploadResponse(
@@ -99,9 +119,15 @@ async def upload_resume(
     )
 
 @router.get("/list", response_model=list[ResumeSummary])
-def list_resumes(db: Session = Depends(get_db)):
-    """Lists all previously uploaded resumes."""
-    resumes = db.query(ResumeModel).order_by(ResumeModel.created_at.desc()).all()
+def list_resumes(
+    db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(require_student)
+):
+    """Lists resumes belonging strictly to the authenticated student."""
+    resumes = db.query(ResumeModel).filter(
+        ResumeModel.user_id == current_user.user_id
+    ).order_by(ResumeModel.created_at.desc()).all()
+    
     results = []
     for r in resumes:
         results.append(ResumeSummary(
@@ -114,11 +140,18 @@ def list_resumes(db: Session = Depends(get_db)):
     return results
 
 @router.get("/{resume_id}", response_model=ResumeDetail)
-def get_resume(resume_id: int, db: Session = Depends(get_db)):
-    """Retrieves full details of a specific resume."""
-    resume = db.query(ResumeModel).filter(ResumeModel.id == resume_id).first()
+def get_resume(
+    resume_id: int,
+    db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(require_student)
+):
+    """Retrieves full details of a specific resume, verifying student ownership."""
+    resume = db.query(ResumeModel).filter(
+        ResumeModel.id == resume_id,
+        ResumeModel.user_id == current_user.user_id
+    ).first()
     if not resume:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resume not found.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resume not found or access denied.")
     return ResumeDetail(
         id=resume.id,
         filename=resume.filename,
@@ -130,16 +163,23 @@ def get_resume(resume_id: int, db: Session = Depends(get_db)):
     )
 
 @router.delete("/{resume_id}", status_code=status.HTTP_200_OK)
-def delete_resume(resume_id: int, db: Session = Depends(get_db)):
-    """Deletes a resume, its vector database embeddings, and its physical file."""
-    resume = db.query(ResumeModel).filter(ResumeModel.id == resume_id).first()
+def delete_resume(
+    resume_id: int,
+    db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(require_student)
+):
+    """Deletes a student's resume, vector embeddings, and physical PDF."""
+    resume = db.query(ResumeModel).filter(
+        ResumeModel.id == resume_id,
+        ResumeModel.user_id == current_user.user_id
+    ).first()
     if not resume:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resume not found.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resume not found or access denied.")
     
     # Delete from vector DB
-    vector_store.delete_resume_chunks(resume_id)
+    vector_store.delete_resume_chunks(resume_id, user_id=current_user.user_id)
     
-    # Delete physical file if present
+    # Delete physical file
     try:
         Path(resume.file_path).unlink(missing_ok=True)
     except Exception:

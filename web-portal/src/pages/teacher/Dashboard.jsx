@@ -58,30 +58,29 @@ export const TeacherDashboard = () => {
   const todayClasses = schedule.filter(s => s.day_of_week === todayWeekday);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Welcome Banner */}
-      <div className="relative bg-gradient-to-r from-teal-900 via-slate-900 to-slate-950 text-white rounded-3xl p-6 sm:p-8 border border-teal-800/40 shadow-xl overflow-hidden">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="theme-card p-6 sm:p-8 bg-gradient-to-r from-blue-600/15 via-indigo-600/10 to-transparent border-blue-500/20 relative overflow-hidden">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-teal-500/20 text-teal-300 border border-teal-500/30 mb-3">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-500/30 mb-3 uppercase tracking-wider">
               <Sparkles className="w-3.5 h-3.5" /> Faculty Portal
             </span>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-slate-100">
               Welcome, {data?.teacher_name}
             </h1>
-            <p className="text-sm text-slate-300 mt-1 max-w-xl">
-              Employee ID: <span className="font-mono text-teal-400">{data?.employee_id}</span> • {data?.designation}
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-xl">
+              Employee ID: <span className="font-mono font-bold text-blue-600 dark:text-blue-400">{data?.employee_id}</span> • {data?.designation}
             </p>
           </div>
 
           <div className="flex items-center gap-3">
             <Link
               to="/teacher/start-attendance"
-              className="flex items-center gap-2 px-5 py-3 rounded-2xl font-bold text-sm bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-slate-950 shadow-lg shadow-teal-500/25 transition-all whitespace-nowrap"
+              className="flex items-center gap-2 px-5 py-3 rounded-2xl font-bold text-xs bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/20 transition-all whitespace-nowrap"
             >
               <Radio className="w-4 h-4 animate-pulse" />
-              Start Attendance
+              Start Attendance Session
             </Link>
           </div>
         </div>

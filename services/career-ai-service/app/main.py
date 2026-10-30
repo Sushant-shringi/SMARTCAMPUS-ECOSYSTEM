@@ -1,28 +1,38 @@
 """
-FastAPI Main Application Entry Point
-Initializes database, CORS middleware, routes, health check, and static React frontend.
+FastAPI Main Application Entry Point - Career AI Service
+Initializes database, CORS middleware, routes, health check, and student data isolation.
 """
 from contextlib import asynccontextmanager
 from pathlib import Path
 from fastapi import FastAPI, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-
 import sys
-from pathlib import Path
+
 _SERVICE_ROOT = str(Path(__file__).resolve().parent.parent)
 if _SERVICE_ROOT not in sys.path:
     sys.path.insert(0, _SERVICE_ROOT)
 
-from backend.app.config import settings
-from backend.app.database.session import init_db
-from backend.app.services.llm import get_llm_provider
-from backend.app.api.resume import router as resume_router
-from backend.app.api.jobs import router as jobs_router
-from backend.app.api.rag import router as rag_router
-from backend.app.api.interview import router as interview_router
-from backend.app.api.suggestions import router as suggestions_router
-from backend.app.api.eligibility import router as eligibility_router
+try:
+    from app.config import settings
+    from app.database.session import init_db
+    from app.services.llm import get_llm_provider
+    from app.api.resume import router as resume_router
+    from app.api.jobs import router as jobs_router
+    from app.api.rag import router as rag_router
+    from app.api.interview import router as interview_router
+    from app.api.suggestions import router as suggestions_router
+    from app.api.eligibility import router as eligibility_router
+except ImportError:
+    from backend.app.config import settings
+    from backend.app.database.session import init_db
+    from backend.app.services.llm import get_llm_provider
+    from backend.app.api.resume import router as resume_router
+    from backend.app.api.jobs import router as jobs_router
+    from backend.app.api.rag import router as rag_router
+    from backend.app.api.interview import router as interview_router
+    from backend.app.api.suggestions import router as suggestions_router
+    from backend.app.api.eligibility import router as eligibility_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -35,7 +45,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
-    description="Generative AI Career & Resume Assistant with modular LLM provider support (Google Gemini & Local Ollama).",
+    description="Generative AI Career & Resume Assistant with student data isolation and institutional attendance gate.",
     lifespan=lifespan
 )
 
@@ -78,15 +88,10 @@ def health_check():
         "vector_store": "ChromaDB (Local Persistent)"
     }
 
-# Mount React Frontend if built
-FRONTEND_DIST = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"
-if FRONTEND_DIST.exists():
-    app.mount("/", StaticFiles(directory=str(FRONTEND_DIST), html=True), name="frontend")
-else:
-    @app.get("/", tags=["Root"])
-    def root():
-        return {
-            "message": f"Welcome to {settings.PROJECT_NAME}",
-            "docs_url": "/docs",
-            "health_url": "/api/health"
-        }
+@app.get("/", tags=["Root"])
+def root():
+    return {
+        "message": f"Welcome to {settings.PROJECT_NAME}",
+        "docs_url": "/docs",
+        "health_url": "/api/health"
+    }

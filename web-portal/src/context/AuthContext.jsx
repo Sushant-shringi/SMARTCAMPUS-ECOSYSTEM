@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { authService } from '../services/authService';
+import { useTheme } from './ThemeContext';
 
 const AuthContext = createContext(null);
 
@@ -7,21 +8,9 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(localStorage.getItem('smartattend_token'));
   const [isLoading, setIsLoading] = useState(true);
-  const [theme, setTheme] = useState(localStorage.getItem('smartattend_theme') || 'dark');
 
-  useEffect(() => {
-    // Apply theme
-    if (theme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-    localStorage.setItem('smartattend_theme', theme);
-  }, [theme]);
-
-  const toggleTheme = () => {
-    setTheme(prev => (prev === 'dark' ? 'light' : 'dark'));
-  };
+  // Consume central ThemeContext
+  const { theme, toggleTheme, setTheme } = useTheme();
 
   useEffect(() => {
     const initAuth = async () => {
@@ -68,6 +57,7 @@ export const AuthProvider = ({ children }) => {
         isLoading,
         theme,
         toggleTheme,
+        setTheme,
         login,
         logout,
         setUser

@@ -138,20 +138,20 @@ export const MarkAttendance = () => {
     <div className="space-y-8 max-w-3xl mx-auto pb-12">
       {/* Header */}
       <div className="text-center">
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20 mb-2">
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 mb-2">
           <Bluetooth className="w-3.5 h-3.5 animate-pulse" /> Proximity Smart Attendance
         </span>
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-slate-100">
+        <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-slate-100">
           Mark Class Presence
         </h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+        <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
           Attendance works seamlessly offline and online via BLE beacon verification
         </p>
       </div>
 
       {/* Class Selection Pill Bar */}
       {todayClasses.length > 0 && (
-        <div className="flex items-center justify-center gap-2 overflow-x-auto p-1 bg-slate-100 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
+        <div className="flex items-center justify-center gap-2 overflow-x-auto p-1.5 bg-slate-100 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
           {todayClasses.map((c) => (
             <button
               key={c.timetable_id}
@@ -161,7 +161,7 @@ export const MarkAttendance = () => {
               }}
               className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 ${
                 selectedClass?.timetable_id === c.timetable_id
-                  ? 'bg-teal-600 text-white shadow-md'
+                  ? 'bg-blue-600 text-white shadow-md'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
               }`}
             >
@@ -178,7 +178,7 @@ export const MarkAttendance = () => {
 
       {/* SUCCESS CARD (When marked) */}
       {attendanceResult ? (
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 shadow-2xl text-center space-y-6 animate-in zoom-in-95">
+        <div className="theme-card p-8 text-center space-y-6 animate-in zoom-in-95">
           <div className="w-16 h-16 rounded-full bg-emerald-500/20 text-emerald-500 flex items-center justify-center mx-auto shadow-xl shadow-emerald-500/20">
             <CheckCircle2 className="w-10 h-10" />
           </div>
@@ -187,7 +187,7 @@ export const MarkAttendance = () => {
             <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 uppercase">
               {attendanceResult.record?.status || 'PRESENT'}
             </span>
-            <h2 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 mt-2">
+            <h2 className="text-2xl font-black text-slate-900 dark:text-slate-100 mt-2">
               Attendance Marked Successfully!
             </h2>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
@@ -232,7 +232,7 @@ export const MarkAttendance = () => {
                 setAttendanceResult(null);
                 fetchActiveClasses();
               }}
-              className="px-6 py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-bold text-xs transition-colors"
+              className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs transition-colors"
             >
               Done
             </button>
@@ -240,7 +240,7 @@ export const MarkAttendance = () => {
         </div>
       ) : selectedClass?.already_marked ? (
         /* ALREADY MARKED CARD */
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 text-center space-y-4 shadow-sm">
+        <div className="theme-card p-8 text-center space-y-4">
           <div className="w-14 h-14 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center mx-auto">
             <CheckCircle2 className="w-8 h-8" />
           </div>
@@ -258,14 +258,14 @@ export const MarkAttendance = () => {
         /* ACTIVE BLE SCANNING & MARK ATTENDANCE INTERFACE */
         <div className="space-y-6">
           {/* Class Summary Banner */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="theme-card p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-mono font-bold text-teal-600 dark:text-teal-400">
+                <span className="text-xs font-mono font-bold text-blue-600 dark:text-blue-400">
                   {selectedClass?.subject_code}
                 </span>
                 {selectedClass?.is_session_active ? (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-500 text-slate-950 animate-pulse">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-600 text-white animate-pulse">
                     ACTIVE NOW
                   </span>
                 ) : (

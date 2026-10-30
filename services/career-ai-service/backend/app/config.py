@@ -6,10 +6,17 @@ import os
 from pathlib import Path
 from pydantic_settings import BaseSettings
 
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
-PROMPTS_DIR = BASE_DIR / "backend" / "prompts"
+curr_path = Path(__file__).resolve()
+if curr_path.parent.parent.name == "backend":
+    BASE_DIR = curr_path.parent.parent.parent
+else:
+    BASE_DIR = curr_path.parent.parent
+
+PROMPTS_DIR = BASE_DIR / "prompts"
 if not PROMPTS_DIR.exists():
-    PROMPTS_DIR = BASE_DIR / "prompts"
+    PROMPTS_DIR = BASE_DIR / "backend" / "prompts"
+
+DEFAULT_ATTENDANCE_DB = BASE_DIR.parent / "attendance-service" / "smartattend.db"
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "AI Career & Resume Assistant"
@@ -35,10 +42,19 @@ class Settings(BaseSettings):
     TOP_K_RESULTS: int = 4
     
     # Storage Paths
-    DATABASE_URL: str = f"sqlite:///{BASE_DIR / 'data' / 'career_assistant.db'}"
+    DATABASE_URL: str = os.getenv("DATABASE_URL", f"sqlite:///{BASE_DIR / 'data' / 'career_assistant.db'}")
     UPLOAD_DIR: Path = BASE_DIR / "data" / "uploads"
     VECTOR_DB_DIR: Path = BASE_DIR / "data" / "vector_db"
     PROMPTS_DIR: Path = PROMPTS_DIR
+    
+    # Authentication & Shared JWT Configuration
+    JWT_SECRET: str = os.getenv("JWT_SECRET", os.getenv("SECRET_KEY", "super-secret-smartattend-key-change-in-production-long-random-string"))
+    ALGORITHM: str = "HS256"
+    
+    # SmartAttend Service Integration
+    ATTENDANCE_SERVICE_URL: str = os.getenv("ATTENDANCE_SERVICE_URL", "http://localhost:8000")
+    ATTENDANCE_DATABASE_URL: str = os.getenv("ATTENDANCE_DATABASE_URL", str(DEFAULT_ATTENDANCE_DB))
+    MINIMUM_ATTENDANCE_THRESHOLD: float = float(os.getenv("MINIMUM_ATTENDANCE_PLACEMENT_THRESHOLD", "75.0"))
     
     # CORS
     CORS_ORIGINS: list[str] = ["*"]

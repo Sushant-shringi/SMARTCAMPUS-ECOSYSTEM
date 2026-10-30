@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ConnectivityProvider } from './context/ConnectivityContext';
 import { ToastProvider } from './components/common/Toast';
@@ -43,11 +44,18 @@ import { Notifications } from './pages/student/Notifications';
 import { StudentProfile } from './pages/student/Profile';
 import { PlacementHub } from './pages/placement/PlacementHub';
 
+// TPO & Placement Pages
+import { TpoDashboard } from './pages/tpo/Dashboard';
+import { ManageDrives } from './pages/tpo/ManageDrives';
+import { ApplicantManagement } from './pages/tpo/ApplicantManagement';
+import { PlacementOverview } from './pages/admin/PlacementOverview';
+
 const RoleRedirect = () => {
   const { user, isAuthenticated, isLoading } = useAuth();
   if (isLoading) return null;
   if (!isAuthenticated || !user) return <Navigate to="/login" replace />;
   if (user.role === 'ADMIN') return <Navigate to="/admin/dashboard" replace />;
+  if (user.role === 'TPO') return <Navigate to="/tpo/dashboard" replace />;
   if (user.role === 'TEACHER') return <Navigate to="/teacher/dashboard" replace />;
   if (user.role === 'STUDENT') return <Navigate to="/student/dashboard" replace />;
   return <Navigate to="/login" replace />;
@@ -56,9 +64,10 @@ const RoleRedirect = () => {
 export default function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <ConnectivityProvider>
-          <ToastProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <ConnectivityProvider>
+            <ToastProvider>
             <Routes>
               {/* Public Routes */}
               <Route path="/login" element={<Login />} />
@@ -87,6 +96,21 @@ export default function App() {
                 <Route path="attendance" element={<AttendanceLogs />} />
                 <Route path="reports" element={<Reports />} />
                 <Route path="audit-logs" element={<AuditLogs />} />
+                <Route path="placement" element={<PlacementOverview />} />
+              </Route>
+
+              {/* TPO Protected Routes */}
+              <Route
+                path="/tpo"
+                element={
+                  <ProtectedRoute allowedRoles={['TPO', 'ADMIN']}>
+                    <DashboardLayout />
+                  </ProtectedRoute>
+                }
+              >
+                <Route path="dashboard" element={<TpoDashboard />} />
+                <Route path="drives" element={<ManageDrives />} />
+                <Route path="applicants" element={<ApplicantManagement />} />
               </Route>
 
               {/* Teacher Protected Routes */}
@@ -132,6 +156,7 @@ export default function App() {
           </ToastProvider>
         </ConnectivityProvider>
       </AuthProvider>
-    </BrowserRouter>
+    </ThemeProvider>
+  </BrowserRouter>
   );
 }

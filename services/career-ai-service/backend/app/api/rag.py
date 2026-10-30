@@ -1,30 +1,49 @@
 """
-RAG Resume Chat API Endpoint
+RAG Resume Chat API Endpoint with Student Data Isolation
 """
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from backend.app.database.session import get_db
-from backend.app.database.models import ResumeModel
-from backend.app.schemas.rag import RagChatRequest, RagChatResponse, SourceChunk
-from backend.app.services.rag_service import rag_service
+
+try:
+    from app.database.session import get_db
+    from app.database.models import ResumeModel
+    from app.schemas.rag import RagChatRequest, RagChatResponse, SourceChunk
+    from app.services.rag_service import rag_service
+    from app.auth.dependencies import require_student, AuthenticatedUser
+except ImportError:
+    from backend.app.database.session import get_db
+    from backend.app.database.models import ResumeModel
+    from backend.app.schemas.rag import RagChatRequest, RagChatResponse, SourceChunk
+    from backend.app.services.rag_service import rag_service
+    from backend.app.auth.dependencies import require_student, AuthenticatedUser
 
 router = APIRouter(prefix="/rag", tags=["RAG Chat"])
 
 @router.post("/chat", response_model=RagChatResponse)
 def chat_with_resume(
     request: RagChatRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(require_student)
 ):
     """
-    Answers questions about a candidate's resume using local RAG:
-    Embeds query -> Retrieves nearest resume chunks -> Grounds LLM answer.
+    Answers questions about an authenticated candidate's resume using local RAG:
+    Embeds query -> Retrieves nearest resume chunks for this student -> Grounds LLM answer.
     """
-    resume = db.query(ResumeModel).filter(ResumeModel.id == request.resume_id).first()
+    resume = db.query(ResumeModel).filter(
+        ResumeModel.id == request.resume_id,
+        ResumeModel.user_id == current_user.user_id
+    ).first()
     if not resume:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resume not found.")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Resume not found or access denied."
+        )
 
     if not request.question.strip():
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Question cannot be empty.")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Question cannot be empty."
+        )
 
     answer, source_chunks, provider_name = rag_service.answer_question(
         resume_id=resume.id,

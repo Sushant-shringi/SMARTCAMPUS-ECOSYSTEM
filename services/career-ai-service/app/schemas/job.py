@@ -27,10 +27,10 @@ class MatchRequest(BaseModel):
 
 class MatchResponse(BaseModel):
     resume_id: int
-    job_title: str
+    job_title: str = "Custom Job Posting"
     match_percentage: float
-    matching_skills: list[str]
-    missing_skills: list[str]
-    relevant_projects: list[str]
-    suggestions: list[str]
-    llm_analysis: str
+    matching_skills: list[str] = []
+    missing_skills: list[str] = []
+    relevant_projects: list[str] = []
+    suggestions: list[str] = []
+    llm_analysis: str = ""

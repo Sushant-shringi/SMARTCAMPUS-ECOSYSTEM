@@ -2,16 +2,38 @@
 Job Description Matcher Service
 Combines deterministic skill extraction with semantic vector analysis and LLM advice.
 """
-from backend.app.config import settings
-from backend.app.services.skill_extractor import extract_skills_from_text
-from backend.app.services.embedding_service import embedding_service
-from backend.app.services.vector_store import vector_store
-from backend.app.services.llm import get_llm_provider
-from backend.app.services.rag_service import load_prompt_template
+try:
+    from app.config import settings
+    from app.services.skill_extractor import extract_skills_from_text
+    from app.services.embedding_service import embedding_service
+    from app.services.vector_store import vector_store
+    from app.services.llm import get_llm_provider
+    from app.services.rag_service import load_prompt_template
+except ImportError:
+    from backend.app.config import settings
+    from backend.app.services.skill_extractor import extract_skills_from_text
+    from backend.app.services.embedding_service import embedding_service
+    from backend.app.services.vector_store import vector_store
+    from backend.app.services.llm import get_llm_provider
+    from backend.app.services.rag_service import load_prompt_template
 
 class JobMatcherService:
     def __init__(self):
         self.prompt_template = load_prompt_template("job_analysis_prompt.txt")
+
+    def match(
+        self,
+        resume_id: int,
+        resume_text: str,
+        resume_skills: list[str],
+        job_text: str
+    ) -> dict:
+        return self.match_resume_to_jd(
+            resume_id=resume_id,
+            resume_text=resume_text,
+            resume_skills=resume_skills,
+            job_description=job_text
+        )
 
     def match_resume_to_jd(
         self,

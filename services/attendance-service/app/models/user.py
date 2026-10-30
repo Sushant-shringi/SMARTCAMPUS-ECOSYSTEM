@@ -8,6 +8,7 @@ class UserRole(str):
     ADMIN = "ADMIN"
     TEACHER = "TEACHER"
     STUDENT = "STUDENT"
+    TPO = "TPO"
 
 class UserStatus(str):
     PENDING = "PENDING"

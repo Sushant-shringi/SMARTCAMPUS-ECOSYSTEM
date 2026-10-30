@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertCircle, Terminal, CheckCircle2 } from 'lucide-react';
+import { AlertCircle, Terminal } from 'lucide-react';
 
 export default function StatusBanner({ health }) {
   if (!health || health.llm_status === 'connected') return null;

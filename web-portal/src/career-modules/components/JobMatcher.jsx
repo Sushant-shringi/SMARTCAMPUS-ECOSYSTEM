@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Target, CheckCircle2, XCircle, Sparkles, FolderGit2, AlertCircle, ArrowRight } from 'lucide-react';
+import { Target, CheckCircle2, XCircle, Sparkles, FolderGit2, AlertCircle } from 'lucide-react';
 import { matchResumeJob } from '../api/client';
 
 const SAMPLE_JDS = [
@@ -61,26 +61,26 @@ export default function JobMatcher({ activeResume }) {
   return (
     <div className="space-y-6">
       {/* Input Section */}
-      <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 space-y-4">
+      <div className="p-6 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h3 className="text-lg font-bold text-white flex items-center gap-2">
-              <Target className="w-5 h-5 text-emerald-400" />
+            <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+              <Target className="w-5 h-5 text-blue-600 dark:text-blue-400" />
               Resume vs Job Description Matcher
             </h3>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
               Deterministic skill comparison + Vector similarity project matching + LLM coaching advice.
             </p>
           </div>
 
           {/* Quick Presets */}
           <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-500">Preset JDs:</span>
+            <span className="text-xs text-slate-400">Preset JDs:</span>
             {SAMPLE_JDS.map((sample, idx) => (
               <button
                 key={idx}
                 onClick={() => setJobText(sample.text)}
-                className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-lg border border-slate-700 transition-colors"
+                className="px-2.5 py-1 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 transition-colors shadow-2xs"
               >
                 {sample.title}
               </button>
@@ -93,17 +93,17 @@ export default function JobMatcher({ activeResume }) {
           value={jobText}
           onChange={(e) => setJobText(e.target.value)}
           placeholder="Paste Job Description here..."
-          className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-xs font-mono text-slate-200 focus:outline-none focus:border-emerald-500/50 transition-colors"
+          className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-4 text-xs font-mono text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all shadow-2xs"
         />
 
         <div className="flex items-center justify-between">
-          <span className="text-xs text-slate-400">
-            Matching against: <strong className="text-white">{activeResume ? activeResume.filename : 'No resume selected'}</strong>
+          <span className="text-xs text-slate-500 dark:text-slate-400">
+            Matching against: <strong className="text-slate-900 dark:text-slate-100">{activeResume ? activeResume.filename : 'No resume selected'}</strong>
           </span>
           <button
             onClick={handleMatch}
             disabled={matching || !activeResume}
-            className="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 font-semibold text-xs rounded-xl shadow-lg shadow-emerald-500/20 flex items-center gap-2 transition-all cursor-pointer"
+            className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-500/20 flex items-center gap-2 transition-all cursor-pointer"
           >
             <Sparkles className="w-4 h-4" />
             <span>{matching ? 'Analyzing Match & Projects...' : 'Analyze Match'}</span>
@@ -111,7 +111,7 @@ export default function JobMatcher({ activeResume }) {
         </div>
 
         {error && (
-          <div className="p-3 bg-red-950/50 border border-red-800 rounded-xl text-xs text-red-300 flex items-center gap-2">
+          <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-xs text-red-600 dark:text-red-400 flex items-center gap-2">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{error}</span>
           </div>
@@ -120,24 +120,24 @@ export default function JobMatcher({ activeResume }) {
 
       {/* Match Results Display */}
       {matchResult && (
-        <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 space-y-6">
+        <div className="p-6 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 space-y-6">
           {/* Score & Summary Header */}
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 border-b border-slate-800 pb-6">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 border-b border-slate-200 dark:border-slate-800 pb-6">
             <div>
-              <span className="text-xs font-semibold text-emerald-400 uppercase tracking-wider">Analysis Result</span>
-              <h4 className="text-xl font-bold text-white mt-1">
+              <span className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">Analysis Result</span>
+              <h4 className="text-xl font-black text-slate-900 dark:text-slate-100 mt-1">
                 Resume-JD Match Breakdown
               </h4>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                 Note: This is a semantic and skills gap analysis to guide resume tailoring, not an official ATS score.
               </p>
             </div>
 
             {/* Score Gauge */}
-            <div className="flex items-center gap-4 bg-slate-950/80 border border-slate-800 px-5 py-3 rounded-2xl">
+            <div className="flex items-center gap-4 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-5 py-3 rounded-2xl shadow-xs">
               <div className="text-center">
-                <span className="text-3xl font-extrabold text-emerald-400">{matchResult.match_percentage}%</span>
-                <span className="block text-[10px] text-slate-400 uppercase font-medium">Skill Alignment</span>
+                <span className="text-3xl font-black text-blue-600 dark:text-blue-400">{matchResult.match_percentage}%</span>
+                <span className="block text-[10px] text-slate-400 uppercase font-bold">Skill Alignment</span>
               </div>
             </div>
           </div>
@@ -145,39 +145,39 @@ export default function JobMatcher({ activeResume }) {
           {/* 2-Column Skills Breakdown */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Matching Skills */}
-            <div className="bg-slate-950/50 border border-emerald-900/30 rounded-xl p-4 space-y-3">
-              <div className="flex items-center gap-2 text-xs font-bold text-emerald-400 uppercase">
+            <div className="bg-white dark:bg-slate-950/60 border border-emerald-500/30 rounded-xl p-4 space-y-3 shadow-2xs">
+              <div className="flex items-center gap-2 text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase">
                 <CheckCircle2 className="w-4 h-4" />
                 <span>Matching Skills ({matchResult.matching_skills?.length || 0})</span>
               </div>
               <div className="flex flex-wrap gap-2">
                 {matchResult.matching_skills && matchResult.matching_skills.length > 0 ? (
                   matchResult.matching_skills.map((s, i) => (
-                    <span key={i} className="px-2.5 py-1 bg-emerald-950/50 border border-emerald-800/60 text-emerald-300 text-xs rounded-lg font-medium">
+                    <span key={i} className="px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-xs rounded-lg font-medium">
                       {s}
                     </span>
                   ))
                 ) : (
-                  <span className="text-xs text-slate-500 italic">No direct keyword overlap found.</span>
+                  <span className="text-xs text-slate-400 italic">No direct keyword overlap found.</span>
                 )}
               </div>
             </div>
 
             {/* Missing Skills */}
-            <div className="bg-slate-950/50 border border-amber-900/30 rounded-xl p-4 space-y-3">
-              <div className="flex items-center gap-2 text-xs font-bold text-amber-400 uppercase">
+            <div className="bg-white dark:bg-slate-950/60 border border-amber-500/30 rounded-xl p-4 space-y-3 shadow-2xs">
+              <div className="flex items-center gap-2 text-xs font-bold text-amber-600 dark:text-amber-400 uppercase">
                 <XCircle className="w-4 h-4" />
                 <span>Missing / Less Evident Skills ({matchResult.missing_skills?.length || 0})</span>
               </div>
               <div className="flex flex-wrap gap-2">
                 {matchResult.missing_skills && matchResult.missing_skills.length > 0 ? (
                   matchResult.missing_skills.map((s, i) => (
-                    <span key={i} className="px-2.5 py-1 bg-amber-950/50 border border-amber-800/60 text-amber-300 text-xs rounded-lg font-medium">
+                    <span key={i} className="px-2.5 py-1 bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300 text-xs rounded-lg font-medium">
                       {s}
                     </span>
                   ))
                 ) : (
-                  <span className="text-xs text-emerald-400 font-medium">All explicit JD catalog skills matched!</span>
+                  <span className="text-xs text-emerald-600 font-medium">All explicit JD catalog skills matched!</span>
                 )}
               </div>
             </div>
@@ -186,13 +186,13 @@ export default function JobMatcher({ activeResume }) {
           {/* Relevant Projects Detected by Vector Search */}
           {matchResult.relevant_projects && matchResult.relevant_projects.length > 0 && (
             <div className="space-y-3">
-              <h5 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
-                <FolderGit2 className="w-4 h-4 text-teal-400" />
+              <h5 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                <FolderGit2 className="w-4 h-4 text-blue-500" />
                 <span>Relevant Resume Projects & Experience (Retrieved via Embeddings)</span>
               </h5>
               <div className="space-y-2">
                 {matchResult.relevant_projects.map((proj, i) => (
-                  <div key={i} className="p-3 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-300 font-mono">
+                  <div key={i} className="p-3 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-300 font-mono shadow-2xs">
                     {proj}
                   </div>
                 ))}
@@ -201,12 +201,12 @@ export default function JobMatcher({ activeResume }) {
           )}
 
           {/* Tailored LLM Advice */}
-          <div className="space-y-3 pt-2 border-t border-slate-800">
-            <h5 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-emerald-400" />
+          <div className="space-y-3 pt-2 border-t border-slate-200 dark:border-slate-800">
+            <h5 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-blue-500" />
               <span>Career Coach Suggestions & Optimization Plan</span>
             </h5>
-            <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-300 leading-relaxed whitespace-pre-wrap">
+            <div className="p-4 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap shadow-2xs">
               {matchResult.llm_analysis}
             </div>
           </div>

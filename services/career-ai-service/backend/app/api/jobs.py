@@ -1,24 +1,38 @@
 """
-Job Description & Match Analysis API Endpoints
+Job Description & Match Analysis API Endpoints with Student Data Isolation
 """
 import json
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from backend.app.database.session import get_db
-from backend.app.database.models import ResumeModel, JobDescriptionModel, AnalysisModel
-from backend.app.schemas.job import (
-    JobDescriptionCreate, JobDescriptionResponse,
-    MatchRequest, MatchResponse
-)
-from backend.app.services.skill_extractor import extract_skills_from_text
-from backend.app.services.job_matcher import job_matcher
+
+try:
+    from app.database.session import get_db
+    from app.database.models import ResumeModel, JobDescriptionModel, AnalysisModel
+    from app.schemas.job import (
+        JobDescriptionCreate, JobDescriptionResponse,
+        MatchRequest, MatchResponse
+    )
+    from app.services.skill_extractor import extract_skills_from_text
+    from app.services.job_matcher import job_matcher
+    from app.auth.dependencies import require_student, AuthenticatedUser
+except ImportError:
+    from backend.app.database.session import get_db
+    from backend.app.database.models import ResumeModel, JobDescriptionModel, AnalysisModel
+    from backend.app.schemas.job import (
+        JobDescriptionCreate, JobDescriptionResponse,
+        MatchRequest, MatchResponse
+    )
+    from backend.app.services.skill_extractor import extract_skills_from_text
+    from backend.app.services.job_matcher import job_matcher
+    from backend.app.auth.dependencies import require_student, AuthenticatedUser
 
 router = APIRouter(prefix="/jobs", tags=["Job Description & Matching"])
 
 @router.post("/analyze", response_model=JobDescriptionResponse)
 def analyze_job_description(
     job_in: JobDescriptionCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(require_student)
 ):
     """
     Extracts skills and requirements from a Job Description.
@@ -29,6 +43,7 @@ def analyze_job_description(
     extracted_skills = extract_skills_from_text(job_in.description)
     
     job = JobDescriptionModel(
+        user_id=current_user.user_id,
         title=job_in.title,
         company=job_in.company,
         description=job_in.description,
@@ -50,59 +65,65 @@ def analyze_job_description(
 @router.post("/match", response_model=MatchResponse)
 def match_resume_with_job(
     request: MatchRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(require_student)
 ):
     """
     Runs deterministic skill comparison + vector project matching + LLM analysis
-    between an uploaded resume and a job description.
+    between an authenticated student's resume and a job description.
     """
-    resume = db.query(ResumeModel).filter(ResumeModel.id == request.resume_id).first()
+    resume = db.query(ResumeModel).filter(
+        ResumeModel.id == request.resume_id,
+        ResumeModel.user_id == current_user.user_id
+    ).first()
     if not resume:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resume not found.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resume not found or access denied.")
 
-    # Determine job description text and title
+    job_text = ""
+    job_desc_id = None
     if request.job_description_id:
-        jd_obj = db.query(JobDescriptionModel).filter(JobDescriptionModel.id == request.job_description_id).first()
-        if not jd_obj:
+        jd = db.query(JobDescriptionModel).filter(JobDescriptionModel.id == request.job_description_id).first()
+        if not jd:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job description not found.")
-        job_text = jd_obj.description
-        job_title = f"{jd_obj.title} ({jd_obj.company})"
+        job_text = jd.description
+        job_desc_id = jd.id
     elif request.custom_job_text:
         job_text = request.custom_job_text
-        job_title = "Custom Job Description"
     else:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Either job_description_id or custom_job_text must be provided."
         )
 
-    analysis_res = job_matcher.match_resume_to_jd(
+    # Execute match analysis
+    match_result = job_matcher.match(
         resume_id=resume.id,
         resume_text=resume.cleaned_text,
         resume_skills=resume.get_skills_list(),
-        job_description=job_text
+        job_text=job_text
     )
 
-    # Persist analysis
-    analysis_entry = AnalysisModel(
+    # Persist analysis result
+    analysis = AnalysisModel(
         resume_id=resume.id,
-        job_description_id=request.job_description_id,
-        matching_skills=json.dumps(analysis_res["matching_skills"]),
-        missing_skills=json.dumps(analysis_res["missing_skills"]),
-        match_percentage=analysis_res["match_percentage"],
-        relevant_projects=json.dumps(analysis_res["relevant_projects"]),
-        suggestions=analysis_res["llm_analysis"]
+        job_description_id=job_desc_id,
+        matching_skills=json.dumps(match_result["matching_skills"]),
+        missing_skills=json.dumps(match_result["missing_skills"]),
+        match_percentage=match_result["match_percentage"],
+        relevant_projects=json.dumps(match_result["relevant_projects"]),
+        suggestions=match_result["suggestions"]
     )
-    db.add(analysis_entry)
+    db.add(analysis)
     db.commit()
 
     return MatchResponse(
         resume_id=resume.id,
-        job_title=job_title,
-        match_percentage=analysis_res["match_percentage"],
-        matching_skills=analysis_res["matching_skills"],
-        missing_skills=analysis_res["missing_skills"],
-        relevant_projects=analysis_res["relevant_projects"],
-        suggestions=analysis_res["suggestions"],
-        llm_analysis=analysis_res["llm_analysis"]
+        job_description_id=job_desc_id,
+        matching_skills=match_result["matching_skills"],
+        missing_skills=match_result["missing_skills"],
+        match_percentage=match_result["match_percentage"],
+        relevant_projects=match_result["relevant_projects"],
+        suggestions=match_result["suggestions"],
+        deterministic_score=match_result.get("deterministic_score", 0.0),
+        semantic_score=match_result.get("semantic_score", 0.0)
     )

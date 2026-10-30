@@ -4,8 +4,13 @@ Provides connection engine, session factory, and dependency injection.
 """
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from backend.app.config import settings
-from backend.app.database.models import Base
+
+try:
+    from app.config import settings
+    from app.database.models import Base
+except ImportError:
+    from backend.app.config import settings
+    from backend.app.database.models import Base
 
 engine = create_engine(
     settings.DATABASE_URL,

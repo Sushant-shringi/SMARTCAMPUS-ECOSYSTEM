@@ -77,5 +77,6 @@ def require_roles(allowed_roles: List[str]):
 require_admin = require_roles([UserRole.ADMIN])
 require_teacher = require_roles([UserRole.TEACHER])
 require_student = require_roles([UserRole.STUDENT])
-require_staff = require_roles([UserRole.ADMIN, UserRole.TEACHER])
+require_tpo = require_roles([UserRole.TPO, UserRole.ADMIN])
+require_staff = require_roles([UserRole.ADMIN, UserRole.TEACHER, UserRole.TPO])
 require_any_authenticated = Depends(get_current_active_user)

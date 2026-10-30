@@ -111,8 +111,8 @@ export const AdminDashboard = () => {
 
       {/* Today's Attendance Summary KPI Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex items-center gap-3.5 shadow-sm">
-          <div className="p-3 rounded-xl bg-teal-500/10 text-teal-600 dark:text-teal-400">
+        <div className="theme-card p-4 flex items-center gap-3.5">
+          <div className="p-3 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
             <TrendingUp className="w-5 h-5" />
           </div>
           <div>
@@ -121,7 +121,7 @@ export const AdminDashboard = () => {
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex items-center gap-3.5 shadow-sm">
+        <div className="theme-card p-4 flex items-center gap-3.5">
           <div className="p-3 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
             <CheckCircle2 className="w-5 h-5" />
           </div>
@@ -131,7 +131,7 @@ export const AdminDashboard = () => {
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex items-center gap-3.5 shadow-sm">
+        <div className="theme-card p-4 flex items-center gap-3.5">
           <div className="p-3 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
             <Clock className="w-5 h-5" />
           </div>
@@ -141,7 +141,7 @@ export const AdminDashboard = () => {
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex items-center gap-3.5 shadow-sm">
+        <div className="theme-card p-4 flex items-center gap-3.5">
           <div className="p-3 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400">
             <RefreshCw className="w-5 h-5" />
           </div>
@@ -151,7 +151,7 @@ export const AdminDashboard = () => {
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex items-center gap-3.5 shadow-sm">
+        <div className="theme-card p-4 flex items-center gap-3.5">
           <div className="p-3 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400">
             <AlertTriangle className="w-5 h-5" />
           </div>
@@ -165,7 +165,7 @@ export const AdminDashboard = () => {
       {/* Analytics Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Attendance Trend Line Chart */}
-        <div className="lg:col-span-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
+        <div className="lg:col-span-2 theme-card p-6">
           <div className="flex items-center justify-between mb-6">
             <div>
               <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">7-Day Attendance Trend</h3>
@@ -204,7 +204,7 @@ export const AdminDashboard = () => {
         </div>
 
         {/* Status Breakdown Donut Chart */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm flex flex-col justify-between">
+        <div className="theme-card p-6 flex flex-col justify-between">
           <div>
             <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">Status Distribution</h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">Present vs Late vs Absent vs Rejected</p>
