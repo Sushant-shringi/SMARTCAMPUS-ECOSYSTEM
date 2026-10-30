@@ -18,12 +18,15 @@ import {
   WifiOff,
   RefreshCw,
   Clock,
-  Sparkles
+  Sparkles,
+  History as HistoryIcon,
+  ArrowRight
 } from 'lucide-react';
 
 export const MarkAttendance = () => {
   const [todayClasses, setTodayClasses] = useState([]);
   const [selectedClass, setSelectedClass] = useState(null);
+  const [recentHistory, setRecentHistory] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [attendanceResult, setAttendanceResult] = useState(null);
@@ -40,6 +43,15 @@ export const MarkAttendance = () => {
 
   const { showToast } = useToast();
   const navigate = useNavigate();
+
+  const fetchRecentHistory = async () => {
+    try {
+      const records = await attendanceService.getAttendanceHistory(5);
+      setRecentHistory(Array.isArray(records) ? records : (records?.data || []));
+    } catch (e) {
+      console.warn('Recent history load fallback:', e);
+    }
+  };
 
   const fetchActiveClasses = async () => {
     try {
@@ -62,11 +74,14 @@ export const MarkAttendance = () => {
 
   useEffect(() => {
     fetchActiveClasses();
+    fetchRecentHistory();
     startBleScan();
 
     // Teacher and student are separate browser sessions. Poll the API so the
     // student panel notices a newly-started attendance session automatically.
-    const poll = setInterval(fetchActiveClasses, 2000);
+    const poll = setInterval(() => {
+      fetchActiveClasses();
+    }, 2000);
     return () => clearInterval(poll);
   }, []);
 
@@ -123,7 +138,8 @@ export const MarkAttendance = () => {
       }
 
       await refreshPendingCount();
-      fetchActiveClasses();
+      await fetchActiveClasses();
+      await fetchRecentHistory();
     } catch (err) {
       const msg = err.response?.data?.detail || err.message || 'Failed to record attendance';
       showToast(msg, 'error');
@@ -159,39 +175,37 @@ export const MarkAttendance = () => {
                 setSelectedClass(c);
                 setAttendanceResult(null);
               }}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 ${
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-2 ${
                 selectedClass?.timetable_id === c.timetable_id
-                  ? 'bg-blue-600 text-white shadow-md'
+                  ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
               }`}
             >
               <span>{c.subject_code}</span>
               {c.already_marked ? (
-                <span className="text-[10px] bg-emerald-500/30 text-emerald-200 px-1.5 py-0.2 rounded">✓</span>
+                <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
               ) : c.is_session_active ? (
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></span>
               ) : null}
             </button>
           ))}
         </div>
       )}
 
-      {/* SUCCESS CARD (When marked) */}
+      {/* Attendance Mode Presentation */}
       {attendanceResult ? (
-        <div className="theme-card p-8 text-center space-y-6 animate-in zoom-in-95">
-          <div className="w-16 h-16 rounded-full bg-emerald-500/20 text-emerald-500 flex items-center justify-center mx-auto shadow-xl shadow-emerald-500/20">
+        /* SUCCESSFUL RESULT CARD */
+        <div className="theme-card p-8 text-center space-y-6 border-emerald-500/30 bg-emerald-500/5">
+          <div className="w-16 h-16 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center mx-auto ring-8 ring-emerald-500/10 animate-bounce">
             <CheckCircle2 className="w-10 h-10" />
           </div>
 
-          <div>
-            <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 uppercase">
-              {attendanceResult.record?.status || 'PRESENT'}
-            </span>
-            <h2 className="text-2xl font-black text-slate-900 dark:text-slate-100 mt-2">
-              Attendance Marked Successfully!
-            </h2>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-              {selectedClass?.subject_name} • {selectedClass?.classroom_name}
+          <div className="space-y-1">
+            <h3 className="text-2xl font-black text-slate-900 dark:text-slate-100">
+              Presence Recorded!
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              You are marked <span className="font-bold text-emerald-600 dark:text-emerald-400">{attendanceResult.record?.status || 'PRESENT'}</span> for {selectedClass?.subject_name}
             </p>
           </div>
 
@@ -223,14 +237,16 @@ export const MarkAttendance = () => {
           <div className="flex justify-center gap-3 pt-2">
             <button
               onClick={() => navigate('/student/history')}
-              className="px-6 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl font-bold text-xs transition-colors"
+              className="px-6 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl font-bold text-xs transition-colors flex items-center gap-1.5"
             >
-              View Attendance History
+              <span>View Attendance History</span>
+              <ArrowRight className="w-3.5 h-3.5" />
             </button>
             <button
               onClick={() => {
                 setAttendanceResult(null);
                 fetchActiveClasses();
+                fetchRecentHistory();
               }}
               className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs transition-colors"
             >
@@ -250,8 +266,17 @@ export const MarkAttendance = () => {
           <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
             You have already registered your attendance for {selectedClass?.subject_name}. Duplicate markings are prevented.
           </p>
-          <div className="pt-2">
+          <div className="pt-2 flex justify-center">
             <StatusBadge status={selectedClass?.marked_status || 'PRESENT'} />
+          </div>
+          <div className="pt-4 flex justify-center gap-3">
+            <button
+              onClick={() => navigate('/student/history')}
+              className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs transition-colors flex items-center gap-2 shadow-sm"
+            >
+              <span>View Complete Attendance History</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
           </div>
         </div>
       ) : (
@@ -274,7 +299,7 @@ export const MarkAttendance = () => {
                   </span>
                 )}
               </div>
-              <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
+              <h3 className="text-lg font-black text-slate-900 dark:text-slate-100">
                 {selectedClass?.subject_name}
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -349,6 +374,65 @@ export const MarkAttendance = () => {
           </button>
         </div>
       )}
+
+      {/* Recent Attendance History Section (Always visible so student immediately sees records) */}
+      <div className="theme-card p-6 space-y-4">
+        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
+          <div className="flex items-center gap-2">
+            <HistoryIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
+              Recent Attendance History
+            </h2>
+          </div>
+          <button
+            onClick={() => navigate('/student/history')}
+            className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+          >
+            <span>View All Records →</span>
+          </button>
+        </div>
+
+        {recentHistory.length === 0 ? (
+          <p className="text-xs text-slate-500 dark:text-slate-400 py-4 text-center">
+            No attendance marked yet. Marked lectures will appear here immediately.
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs text-slate-600 dark:text-slate-300">
+              <thead className="bg-slate-50 dark:bg-slate-800/60 uppercase font-bold text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
+                <tr>
+                  <th className="px-4 py-2.5">Date & Time</th>
+                  <th className="px-4 py-2.5">Course Subject</th>
+                  <th className="px-4 py-2.5">Signal</th>
+                  <th className="px-4 py-2.5">Status</th>
+                  <th className="px-4 py-2.5">Sync</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 font-medium">
+                {recentHistory.map((r) => (
+                  <tr key={r.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                    <td className="px-4 py-3 font-mono text-slate-500 dark:text-slate-400">
+                      {new Date(r.marked_at).toLocaleString()}
+                    </td>
+                    <td className="px-4 py-3 font-bold text-slate-900 dark:text-slate-100">
+                      {r.session?.subject?.name || r.subject_name || 'Course Lecture'}
+                    </td>
+                    <td className="px-4 py-3 font-mono text-teal-600 dark:text-teal-400 font-bold">
+                      {r.ble_rssi !== null ? `${r.ble_rssi} dBm` : '-'}
+                    </td>
+                    <td className="px-4 py-3">
+                      <StatusBadge status={r.status} />
+                    </td>
+                    <td className="px-4 py-3">
+                      <StatusBadge status={r.sync_status} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

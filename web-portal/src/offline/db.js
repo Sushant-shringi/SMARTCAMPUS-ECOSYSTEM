@@ -24,7 +24,7 @@ export const saveOfflineAttendance = async (attendanceData) => {
     marked_at: attendanceData.marked_at || new Date().toISOString(),
     verification_source: attendanceData.verification_source || 'BLE',
     status: attendanceData.status || 'PRESENT',
-    sync_status: 'PENDING_SYNC',
+    sync_status: attendanceData.sync_status || 'PENDING_SYNC',
     retry_count: 0,
     last_error: null,
     created_at: new Date().toISOString()

@@ -11,25 +11,33 @@ export const AttendanceHistory = () => {
   const [history, setHistory] = useState([]);
   const [localQueue, setLocalQueue] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const { isOnline, triggerSync, isSyncing } = useConnectivity();
 
-  const fetchHistory = async () => {
+  const fetchHistory = async (showLoading = true) => {
+    if (showLoading) setIsLoading(true);
+    setIsRefreshing(true);
     try {
       const [remote, local] = await Promise.all([
-        attendanceService.getAttendanceHistory(50).catch(() => []),
+        attendanceService.getAttendanceHistory(100).catch((err) => {
+          console.warn('History fetch fallback:', err);
+          return [];
+        }),
         getAllLocalAttendance()
       ]);
-      setHistory(remote);
-      setLocalQueue(local);
+      const remoteList = Array.isArray(remote) ? remote : (remote?.data || []);
+      setHistory(remoteList);
+      setLocalQueue(local || []);
     } catch (e) {
-      console.error(e);
+      console.error('Failed to fetch attendance history:', e);
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
   };
 
   useEffect(() => {
-    fetchHistory();
+    fetchHistory(true);
   }, []);
 
   if (isLoading) return <LoadingSkeleton type="table" count={5} />;
@@ -42,20 +50,31 @@ export const AttendanceHistory = () => {
             Attendance Record History
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Complete log of verified attendances, offline storage queue, and sync statuses
+            Complete log of verified attendances, offline storage queue, and sync statuses ({history.length} server records)
           </p>
         </div>
 
-        {localQueue.some(i => i.sync_status === 'PENDING_SYNC') && (
+        <div className="flex items-center gap-2">
           <button
-            onClick={triggerSync}
-            disabled={isSyncing || !isOnline}
-            className="flex items-center gap-2 px-4 py-2 text-xs font-bold bg-sky-600 hover:bg-sky-700 text-white rounded-xl shadow-sm transition-colors disabled:opacity-50"
+            onClick={() => fetchHistory(false)}
+            disabled={isRefreshing}
+            className="flex items-center gap-2 px-3.5 py-2 text-xs font-bold bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xs transition-colors disabled:opacity-50"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-            <span>{isSyncing ? 'Syncing...' : 'Sync Pending Records'}</span>
+            <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <span>{isRefreshing ? 'Refreshing...' : 'Refresh'}</span>
           </button>
-        )}
+
+          {localQueue.some(i => i.sync_status === 'PENDING_SYNC') && (
+            <button
+              onClick={triggerSync}
+              disabled={isSyncing || !isOnline}
+              className="flex items-center gap-2 px-4 py-2 text-xs font-bold bg-sky-600 hover:bg-sky-700 text-white rounded-xl shadow-sm transition-colors disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+              <span>{isSyncing ? 'Syncing...' : 'Sync Pending Records'}</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Offline Pending Sync Records Banner if any */}
@@ -119,7 +138,7 @@ export const AttendanceHistory = () => {
                       {new Date(r.marked_at).toLocaleString()}
                     </td>
                     <td className="px-6 py-3.5 font-bold text-slate-900 dark:text-slate-100">
-                      {r.session?.subject?.name || 'Course Lecture'}
+                      {r.session?.subject?.name || r.subject_name || 'Course Lecture'}
                     </td>
                     <td className="px-6 py-3.5 font-mono text-teal-600 dark:text-teal-400 font-bold">
                       {r.ble_rssi !== null ? `${r.ble_rssi} dBm` : '-'}
