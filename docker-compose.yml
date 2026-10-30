@@ -35,7 +35,7 @@ services:
       - DATABASE_URL=sqlite:////app/data/career_assistant.db
       - LLM_PROVIDER=gemini
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
-      - GEMINI_MODEL=gemini-3.1-flash-lite
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.5-flash}
       - OLLAMA_BASE_URL=http://host.docker.internal:11434
       - EMBEDDING_MODEL_NAME=all-MiniLM-L6-v2
       - ATTENDANCE_SERVICE_URL=http://attendance-service:8000

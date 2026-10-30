@@ -32,4 +32,7 @@ class InterviewAnswerRequest(BaseModel):
 class InterviewAnswerResponse(BaseModel):
     question: str
     sample_answer: str
-    source_chunks: list[str]
+    star_answer: str | None = None
+    source_chunks: list[str] = []
+    talking_points: list[str] = []
+    suggested_metric: str | None = None

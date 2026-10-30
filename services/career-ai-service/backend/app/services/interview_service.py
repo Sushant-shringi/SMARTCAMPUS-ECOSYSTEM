@@ -98,4 +98,19 @@ class InterviewService:
         
         return answer, [c["text"] for c in chunks]
 
+    def generate_star_answer(
+        self,
+        resume_id: int,
+        question: str,
+        category: str = 'Technical'
+    ) -> dict:
+        answer, chunks = self.generate_answer(resume_id, question, category)
+        return {
+            'star_answer': answer,
+            'sample_answer': answer,
+            'source_chunks': chunks,
+            'talking_points': [],
+            'suggested_metric': None
+        }
+
 interview_service = InterviewService()

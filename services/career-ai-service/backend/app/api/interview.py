@@ -105,7 +105,9 @@ def generate_sample_answer(
 
     return InterviewAnswerResponse(
         question=request.question,
-        star_answer=answer_data["star_answer"],
+        sample_answer=answer_data.get("sample_answer", answer_data.get("star_answer", "")),
+        star_answer=answer_data.get("star_answer", ""),
+        source_chunks=answer_data.get("source_chunks", []),
         talking_points=answer_data.get("talking_points", []),
         suggested_metric=answer_data.get("suggested_metric")
     )

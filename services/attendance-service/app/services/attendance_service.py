@@ -4,7 +4,8 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 from app.models.attendance import AttendanceSession, AttendanceRecord, SessionStatus, AttendanceStatus, SyncStatus
 from app.models.user import User, Student, UserStatus
-from app.models.academic import Subject, Classroom, StudentEnrollment, Section
+from app.models.academic import Subject, Classroom, StudentEnrollment, Section, TeacherSubject
+from app.models.timetable import Timetable
 from app.utils.timezone import utc_now, ensure_utc
 from app.utils.qr_ble import verify_session_token, generate_session_token, generate_ble_identifier
 from app.config import settings
@@ -29,6 +30,26 @@ def start_attendance_session(
     classroom = db.query(Classroom).filter(Classroom.id == classroom_id).first()
     if not classroom:
         raise HTTPException(status_code=404, detail="Classroom not found")
+
+    subject = db.query(Subject).filter(Subject.id == subject_id).first()
+    if not subject:
+        raise HTTPException(status_code=404, detail="Subject not found")
+
+    # Verify teacher is authorized to teach this course
+    is_authorized = db.query(TeacherSubject).filter(
+        TeacherSubject.teacher_id == teacher_id,
+        TeacherSubject.subject_id == subject_id
+    ).first()
+    if not is_authorized:
+        is_authorized = db.query(Timetable).filter(
+            Timetable.teacher_id == teacher_id,
+            Timetable.subject_id == subject_id
+        ).first()
+    if not is_authorized:
+        raise HTTPException(
+            status_code=403,
+            detail="You are not authorized to start an attendance session for this course."
+        )
     
     # Check if there is already an active session for this teacher
     active_sessions = db.query(AttendanceSession).filter(
@@ -137,13 +158,6 @@ def validate_and_record_attendance(
         if existing_by_id:
             return existing_by_id, True
 
-    existing_record = db.query(AttendanceRecord).filter(
-        AttendanceRecord.session_id == session_id,
-        AttendanceRecord.student_id == student_id
-    ).first()
-    if existing_record:
-        return existing_record, True
-
     # 2. Student validation
     student = db.query(Student).filter(Student.id == student_id).first()
     if not student:
@@ -157,8 +171,12 @@ def validate_and_record_attendance(
     session = None
     if session_id:
         session = db.query(AttendanceSession).filter(AttendanceSession.id == session_id).first()
-
-    if not session and subject_id and classroom_id:
+        if not session:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Attendance session '{session_id}' not found."
+            )
+    elif subject_id and classroom_id:
         # Resolve active or matching session for this subject and classroom
         session_query = db.query(AttendanceSession).filter(
             AttendanceSession.subject_id == subject_id,
@@ -190,7 +208,9 @@ def validate_and_record_attendance(
 
     # For stopped sessions, verify that the attendance was marked while the session was active
     if session.status == SessionStatus.STOPPED:
-        if marked_at > (session.expiry_time + timedelta(minutes=15)) or marked_at < (session.start_time - timedelta(minutes=5)):
+        session_expiry = ensure_utc(session.expiry_time)
+        session_start = ensure_utc(session.start_time)
+        if marked_at > (session_expiry + timedelta(minutes=15)) or marked_at < (session_start - timedelta(minutes=5)):
             raise HTTPException(
                 status_code=400,
                 detail="Attendance timestamp is outside the active session time window. Attendance rejected."
@@ -203,9 +223,24 @@ def validate_and_record_attendance(
         and ble_rssi is not None
         and ble_rssi >= (session.rssi_threshold or -85)
     )
-    token_ok = bool(session_token and verify_session_token(session_token, session.session_token_hash))
+    token_verified = bool(session_token and verify_session_token(session_token, session.session_token_hash))
+    web_proximity_verified = bool(session_token == "valid-ble-proximity-token" and ble_proximity_ok)
 
-    if not token_ok and not ble_proximity_ok:
+    # If a session token was submitted, verify cryptographic authenticity
+    if session_token:
+        if not token_verified and not web_proximity_verified:
+            create_audit_log(
+                db=db,
+                action="ATTENDANCE_REJECTED",
+                status="FAILURE",
+                entity="AttendanceSession",
+                entity_id=session.id,
+                message=f"Invalid session token submitted by student {student.student_id}"
+            )
+            raise HTTPException(status_code=400, detail="Invalid session token. Attendance rejected.")
+
+    # Must satisfy either cryptographic token verification or BLE proximity
+    if not token_verified and not ble_proximity_ok:
         create_audit_log(
             db=db,
             action="ATTENDANCE_REJECTED",

@@ -46,14 +46,31 @@ class GeminiProvider(LLMProvider):
                 system_instruction=system_prompt if system_prompt else None
             )
 
-            response = client.models.generate_content(
-                model=self.model,
-                contents=prompt,
-                config=config
-            )
+            models_to_try = [self.model]
+            for fallback in ["gemini-2.5-flash", "gemini-3.1-flash-lite"]:
+                if fallback not in models_to_try:
+                    models_to_try.append(fallback)
 
-            if response and response.text:
-                return response.text.strip()
+            last_error = None
+            for candidate_model in models_to_try:
+                try:
+                    response = client.models.generate_content(
+                        model=candidate_model,
+                        contents=prompt,
+                        config=config
+                    )
+                    if response and response.text:
+                        return response.text.strip()
+                except Exception as ex:
+                    err_str = str(ex)
+                    last_error = ex
+                    if "503" in err_str or "UNAVAILABLE" in err_str or "high demand" in err_str.lower():
+                        continue
+                    raise ex
+
+            if last_error:
+                raise last_error
+
             return "No text response received from Gemini API."
 
         except Exception as e:

@@ -13,9 +13,9 @@ def test_offline_batch_sync(client):
     start_res = client.post(
         "/api/v1/attendance/sessions",
         json={
-            "subject_id": subjects[1]["id"],
+            "subject_id": subjects[0]["id"],
             "classroom_id": classrooms[0]["id"],
-            "semester_id": subjects[1]["semester_id"],
+            "semester_id": subjects[0]["semester_id"],
             "section_id": "none",
             "duration_minutes": 50,
             "late_threshold_minutes": 5,
@@ -42,7 +42,7 @@ def test_offline_batch_sync(client):
             {
                 "attendance_id": client_uuid1,
                 "session_id": session_id,
-                "subject_id": subjects[1]["id"],
+                "subject_id": subjects[0]["id"],
                 "classroom_id": classrooms[0]["id"],
                 "session_token": raw_token,
                 "ble_rssi": -55,
@@ -53,7 +53,7 @@ def test_offline_batch_sync(client):
             {
                 "attendance_id": client_uuid2,
                 "session_id": "invalid-session-uuid-0000",
-                "subject_id": subjects[1]["id"],
+                "subject_id": subjects[0]["id"],
                 "classroom_id": classrooms[0]["id"],
                 "session_token": "wrong-token-for-test",
                 "ble_rssi": -55,
