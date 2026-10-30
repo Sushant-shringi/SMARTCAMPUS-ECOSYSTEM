@@ -58,12 +58,14 @@ export const StartAttendance = () => {
       setSubjects(teacherClasses);
 
       if (teacherClasses.length > 0 && !formData.subject_id) {
+        const firstCls = teacherClasses[0];
+        const firstTt = firstCls.timetables?.[0];
         setFormData(prev => ({
           ...prev,
-          subject_id: teacherClasses[0].subject_id,
-          semester_id: teacherClasses[0].timetables[0]?.semester_id || '',
-          section_id: teacherClasses[0].timetables[0]?.section_id || '',
-          classroom_id: teacherClasses[0].timetables[0]?.classroom_id || crList[0]?.id || ''
+          subject_id: firstCls.subject_id,
+          semester_id: firstCls.semester_id || firstTt?.semester_id || '',
+          section_id: firstCls.section_id || firstTt?.section_id || '',
+          classroom_id: firstCls.classroom_id || firstTt?.classroom_id || crList[0]?.id || ''
         }));
       }
 
@@ -106,14 +108,14 @@ export const StartAttendance = () => {
 
   const handleSubjectSelect = (subId) => {
     const selected = subjects.find(s => s.subject_id === subId);
-    if (selected && selected.timetables.length > 0) {
-      const tt = selected.timetables[0];
+    if (selected) {
+      const tt = selected.timetables?.[0];
       setFormData(prev => ({
         ...prev,
         subject_id: subId,
-        semester_id: tt.semester_id,
-        section_id: tt.section_id,
-        classroom_id: tt.classroom_id || prev.classroom_id
+        semester_id: selected.semester_id || tt?.semester_id || prev.semester_id,
+        section_id: selected.section_id || tt?.section_id || prev.section_id,
+        classroom_id: selected.classroom_id || tt?.classroom_id || prev.classroom_id
       }));
     } else {
       setFormData(prev => ({ ...prev, subject_id: subId }));

@@ -90,11 +90,15 @@ def get_teacher_classes(
                 Timetable.subject_id == sub.id
             ).all()
 
+            first_tt = timetables[0] if timetables else None
             classes_data.append({
                 "subject_id": sub.id,
                 "subject_name": sub.name,
                 "subject_code": sub.code,
                 "credits": sub.credits,
+                "semester_id": sub.semester_id,
+                "section_id": first_tt.section_id if first_tt else None,
+                "classroom_id": first_tt.classroom_id if first_tt else None,
                 "semester_number": sub.semester.number if sub.semester else 1,
                 "academic_year": sub.semester.academic_year if sub.semester else "2026-2027",
                 "student_count": student_count,

@@ -56,15 +56,30 @@ export const MarkAttendance = () => {
   const fetchActiveClasses = async () => {
     try {
       const classes = await attendanceService.getStudentTodayClasses();
-      setTodayClasses(classes);
+      const list = Array.isArray(classes) ? classes : [];
+      setTodayClasses(list);
 
-      // Find active class session if any
-      const active = classes.find(c => c.is_session_active && !c.already_marked);
-      if (active) {
-        setSelectedClass(active);
-      } else if (classes.length > 0) {
-        setSelectedClass(classes[0]);
-      }
+      // Priority 1: An active session that is not yet marked
+      // Priority 2: Keep previously selected class (updated)
+      // Priority 3: Any active session
+      // Priority 4: First available class
+      setSelectedClass(prev => {
+        const activeUnmarked = list.find(c => c.is_session_active && !c.already_marked);
+        if (activeUnmarked) return activeUnmarked;
+
+        if (prev) {
+          const match = list.find(c =>
+            (c.timetable_id && c.timetable_id === prev.timetable_id) ||
+            (c.subject_id && c.subject_id === prev.subject_id)
+          );
+          if (match) return match;
+        }
+
+        const anyActive = list.find(c => c.is_session_active);
+        if (anyActive) return anyActive;
+
+        return list.length > 0 ? list[0] : null;
+      });
     } catch (e) {
       console.error(e);
     } finally {
@@ -168,27 +183,32 @@ export const MarkAttendance = () => {
       {/* Class Selection Pill Bar */}
       {todayClasses.length > 0 && (
         <div className="flex items-center justify-center gap-2 overflow-x-auto p-1.5 bg-slate-100 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
-          {todayClasses.map((c) => (
-            <button
-              key={c.timetable_id}
-              onClick={() => {
-                setSelectedClass(c);
-                setAttendanceResult(null);
-              }}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-2 ${
-                selectedClass?.timetable_id === c.timetable_id
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-              }`}
-            >
-              <span>{c.subject_code}</span>
-              {c.already_marked ? (
-                <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-              ) : c.is_session_active ? (
-                <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></span>
-              ) : null}
-            </button>
-          ))}
+          {todayClasses.map((c) => {
+            const isSelected =
+              (selectedClass?.timetable_id && selectedClass?.timetable_id === c.timetable_id) ||
+              (selectedClass?.subject_id && selectedClass?.subject_id === c.subject_id);
+            return (
+              <button
+                key={c.timetable_id || c.subject_id || c.active_session_id}
+                onClick={() => {
+                  setSelectedClass(c);
+                  setAttendanceResult(null);
+                }}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-2 ${
+                  isSelected
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                }`}
+              >
+                <span>{c.subject_code}</span>
+                {c.already_marked ? (
+                  <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                ) : c.is_session_active ? (
+                  <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></span>
+                ) : null}
+              </button>
+            );
+          })}
         </div>
       )}
 
@@ -287,7 +307,7 @@ export const MarkAttendance = () => {
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-mono font-bold text-blue-600 dark:text-blue-400">
-                  {selectedClass?.subject_code}
+                  {selectedClass?.subject_code || 'COURSE'}
                 </span>
                 {selectedClass?.is_session_active ? (
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-600 text-white animate-pulse">
@@ -300,17 +320,17 @@ export const MarkAttendance = () => {
                 )}
               </div>
               <h3 className="text-lg font-black text-slate-900 dark:text-slate-100">
-                {selectedClass?.subject_name}
+                {selectedClass?.subject_name || 'Class Session'}
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Instructor: {selectedClass?.teacher_name} • {selectedClass?.classroom_name}
+                Instructor: {selectedClass?.teacher_name || 'Instructor'} • {selectedClass?.classroom_name || 'Awaiting Broadcast'}
               </p>
             </div>
 
             <div className="flex sm:flex-col items-center sm:items-end justify-between text-xs">
               <span className="text-slate-400">Schedule</span>
               <span className="font-mono font-bold text-slate-700 dark:text-slate-300">
-                {selectedClass?.start_time} - {selectedClass?.end_time}
+                {selectedClass ? `${selectedClass.start_time} - ${selectedClass.end_time}` : 'Live Attendance'}
               </span>
             </div>
           </div>

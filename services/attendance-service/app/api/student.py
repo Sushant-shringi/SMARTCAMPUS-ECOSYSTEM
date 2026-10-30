@@ -6,7 +6,7 @@ from sqlalchemy import or_
 from app.database.session import get_db
 from app.auth.dependencies import require_student, require_staff
 from app.models.user import User, Student
-from app.models.academic import Subject, Classroom, StudentEnrollment
+from app.models.academic import Subject, Classroom, StudentEnrollment, TeacherSubject
 from app.models.timetable import Timetable
 from app.models.attendance import AttendanceSession, AttendanceRecord, SessionStatus
 from app.models.notification import Notification
@@ -60,7 +60,39 @@ def get_student_today_classes(
     if not student or not student.semester_id:
         return []
 
-    today_weekday = utc_now().weekday()
+    now = utc_now()
+    today_weekday = now.weekday()
+
+    # 1. Fetch all currently ACTIVE sessions relevant to this student
+    active_sessions_query = db.query(AttendanceSession).filter(
+        AttendanceSession.semester_id == student.semester_id,
+        AttendanceSession.status == SessionStatus.ACTIVE,
+        AttendanceSession.expiry_time > now
+    )
+    if student.section_id:
+        active_sessions_query = active_sessions_query.filter(
+            or_(
+                AttendanceSession.section_id == None,
+                AttendanceSession.section_id == "",
+                AttendanceSession.section_id == student.section_id
+            )
+        )
+    active_sessions = active_sessions_query.order_by(AttendanceSession.start_time.desc()).all()
+
+    # Fallback: if no active session matched section, check any active session in the semester
+    if not active_sessions:
+        active_sessions = db.query(AttendanceSession).filter(
+            AttendanceSession.semester_id == student.semester_id,
+            AttendanceSession.status == SessionStatus.ACTIVE,
+            AttendanceSession.expiry_time > now
+        ).order_by(AttendanceSession.start_time.desc()).all()
+
+    active_by_subject = {}
+    for s in active_sessions:
+        if s.subject_id not in active_by_subject:
+            active_by_subject[s.subject_id] = s
+
+    # 2. Fetch scheduled classes for today
     query = db.query(Timetable).filter(
         Timetable.semester_id == student.semester_id,
         Timetable.day_of_week == today_weekday,
@@ -72,37 +104,37 @@ def get_student_today_classes(
     timetables = query.order_by(Timetable.start_time.asc()).all()
 
     today_classes = []
-    for tt in timetables:
-        # Check if there is an active session right now for this subject & classroom
-        active_session_query = db.query(AttendanceSession).filter(
-            AttendanceSession.subject_id == tt.subject_id,
-            AttendanceSession.semester_id == tt.semester_id,
-            AttendanceSession.status == SessionStatus.ACTIVE,
-            AttendanceSession.expiry_time > utc_now()
-        )
-        if tt.section_id:
-            active_session_query = active_session_query.filter(AttendanceSession.section_id == tt.section_id)
-        active_session = active_session_query.order_by(AttendanceSession.start_time.desc()).first()
+    processed_subject_ids = set()
 
-        # Check if student already marked attendance today
+    for tt in timetables:
+        sub = tt.subject
+        active_session = active_by_subject.get(tt.subject_id)
+
         already_marked = None
         if active_session:
             already_marked = db.query(AttendanceRecord).filter(
                 AttendanceRecord.session_id == active_session.id,
                 AttendanceRecord.student_id == student.id
             ).first()
+        else:
+            today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            already_marked = db.query(AttendanceRecord).filter(
+                AttendanceRecord.student_id == student.id,
+                AttendanceRecord.subject_id == tt.subject_id,
+                AttendanceRecord.marked_at >= today_start
+            ).order_by(AttendanceRecord.marked_at.desc()).first()
 
         teacher_user = db.query(User).filter(User.id == tt.teacher.user_id).first() if tt.teacher else None
 
         today_classes.append({
             "timetable_id": tt.id,
-            "subject_id": tt.subject.id if tt.subject else "",
-            "subject_code": tt.subject.code if tt.subject else "",
-            "subject_name": tt.subject.name if tt.subject else "",
+            "subject_id": sub.id if sub else tt.subject_id,
+            "subject_code": sub.code if sub else "",
+            "subject_name": sub.name if sub else "",
             "teacher_name": teacher_user.full_name if teacher_user else "Instructor",
-            "classroom_name": tt.classroom.name if tt.classroom else "",
-            "classroom_id": tt.classroom.id if tt.classroom else "",
-            "ble_identifier": active_session.ble_identifier if active_session else (tt.classroom.ble_identifier if tt.classroom else ""),
+            "classroom_name": (active_session.classroom.name if active_session and active_session.classroom else (tt.classroom.name if tt.classroom else "")),
+            "classroom_id": (active_session.classroom_id if active_session else (tt.classroom.id if tt.classroom else "")),
+            "ble_identifier": (active_session.ble_identifier if active_session else (tt.classroom.ble_identifier if tt.classroom else "")),
             "active_session_token": "valid-ble-proximity-token" if active_session else None,
             "active_session_classroom_id": active_session.classroom_id if active_session else None,
             "active_session_classroom_name": active_session.classroom.name if active_session and active_session.classroom else None,
@@ -113,7 +145,92 @@ def get_student_today_classes(
             "already_marked": bool(already_marked),
             "marked_status": already_marked.status if already_marked else None
         })
+        processed_subject_ids.add(tt.subject_id)
 
+    # 3. If an active session is running for a subject not in today's timetable, include it!
+    for act_sub_id, act_s in active_by_subject.items():
+        if act_sub_id not in processed_subject_ids:
+            sub = db.query(Subject).filter(Subject.id == act_sub_id).first()
+            act_teacher_user = None
+            if act_s.teacher:
+                act_teacher_user = db.query(User).filter(User.id == act_s.teacher.user_id).first()
+
+            already_marked = db.query(AttendanceRecord).filter(
+                AttendanceRecord.session_id == act_s.id,
+                AttendanceRecord.student_id == student.id
+            ).first()
+
+            today_classes.append({
+                "timetable_id": act_s.id,
+                "subject_id": sub.id if sub else act_sub_id,
+                "subject_code": sub.code if sub else "",
+                "subject_name": sub.name if sub else "",
+                "teacher_name": act_teacher_user.full_name if act_teacher_user else "Instructor",
+                "classroom_name": act_s.classroom.name if act_s.classroom else "",
+                "classroom_id": act_s.classroom_id or "",
+                "ble_identifier": act_s.ble_identifier or "",
+                "active_session_token": "valid-ble-proximity-token",
+                "active_session_classroom_id": act_s.classroom_id,
+                "active_session_classroom_name": act_s.classroom.name if act_s.classroom else None,
+                "start_time": act_s.start_time.strftime("%H:%M") if act_s.start_time else "10:00",
+                "end_time": act_s.expiry_time.strftime("%H:%M") if act_s.expiry_time else "11:00",
+                "is_session_active": True,
+                "active_session_id": act_s.id,
+                "already_marked": bool(already_marked),
+                "marked_status": already_marked.status if already_marked else None
+            })
+            processed_subject_ids.add(act_sub_id)
+
+    # 4. If today has NO timetable (e.g. Saturday or Sunday), populate semester subjects so student can see and mark classes
+    if not timetables:
+        all_sem_subs = db.query(Subject).filter(Subject.semester_id == student.semester_id).all()
+        for sub in all_sem_subs:
+            if sub.id not in processed_subject_ids:
+                ts = db.query(TeacherSubject).filter(TeacherSubject.subject_id == sub.id).first()
+                t_user = db.query(User).filter(User.id == ts.teacher.user_id).first() if ts and ts.teacher else None
+                first_tt = db.query(Timetable).filter(Timetable.subject_id == sub.id).first()
+                classroom = first_tt.classroom if first_tt else None
+                cr_name = classroom.name if classroom else "Classroom Hall"
+                cr_id = classroom.id if classroom else ""
+                ble_id = classroom.ble_identifier if classroom else "SMARTATTEND-MAIN"
+
+                today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+                already_marked = db.query(AttendanceRecord).filter(
+                    AttendanceRecord.student_id == student.id,
+                    AttendanceRecord.subject_id == sub.id,
+                    AttendanceRecord.marked_at >= today_start
+                ).order_by(AttendanceRecord.marked_at.desc()).first()
+
+                today_classes.append({
+                    "timetable_id": sub.id,
+                    "subject_id": sub.id,
+                    "subject_code": sub.code,
+                    "subject_name": sub.name,
+                    "teacher_name": t_user.full_name if t_user else (first_tt.teacher.user.full_name if first_tt and first_tt.teacher and first_tt.teacher.user else "Instructor"),
+                    "classroom_name": cr_name,
+                    "classroom_id": cr_id,
+                    "ble_identifier": ble_id,
+                    "active_session_token": None,
+                    "active_session_classroom_id": None,
+                    "active_session_classroom_name": None,
+                    "start_time": first_tt.start_time if first_tt else "10:00",
+                    "end_time": first_tt.end_time if first_tt else "11:00",
+                    "is_session_active": False,
+                    "active_session_id": None,
+                    "already_marked": bool(already_marked),
+                    "marked_status": already_marked.status if already_marked else None
+                })
+                processed_subject_ids.add(sub.id)
+
+    # 5. Sort: Unmarked active classes first, then marked active classes, then by start_time
+    def sort_key(c):
+        if c["is_session_active"] and not c["already_marked"]:
+            return (0, c["start_time"])
+        if c["is_session_active"]:
+            return (1, c["start_time"])
+        return (2, c["start_time"])
+
+    today_classes.sort(key=sort_key)
     return today_classes
 
 @router.get("/schedule", response_model=List[TimetableResponse])

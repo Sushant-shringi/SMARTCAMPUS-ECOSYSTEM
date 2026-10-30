@@ -68,6 +68,9 @@ def start_attendance_session(
     session_id_temp = str(int(now.timestamp()))
     ble_id = classroom.ble_identifier or generate_ble_identifier(classroom.room_number, session_id_temp)
 
+    if not semester_id and subject.semester_id:
+        semester_id = subject.semester_id
+
     # Resolve section_id to a valid foreign key if needed
     sec = db.query(Section).filter(Section.id == section_id).first()
     if not sec:
